@@ -32,7 +32,11 @@ RYDESAVYR is a Python project developed as part of the Columbia Python Bootcamp.
 | Final presentation | | Not started |
 
 ## Team
--
+Founding members:
+- Ari Teicher
+- Darko Beovic
+- Stephen Chang
+- Sabrina Gonzalez
 
 ## Open Questions
 -
