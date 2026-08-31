@@ -21,32 +21,9 @@ RYDESAVYR solves this by collecting all the ways to get home (rideshare, taxi, p
 - Work fast and reliably under low-battery, low-information conditions (minimal taps, minimal data needed)
 - Let users customize how much each factor matters to them
 
-## Scope
-### In Scope
--
-
-### Out of Scope
--
-
-## Technical Approach
-- **Language/Stack:** Python
-- **Key Libraries:**
-- **Data Sources:**
-
-## Milestones / Timeline
-| Milestone | Target Date | Status |
-|-----------|-------------|--------|
-| Project kickoff | | Not started |
-| Core functionality | | Not started |
-| Testing & polish | | Not started |
-| Final presentation | | Not started |
-
 ## Team
 Founding members:
 - Ari Teicher
 - Darko Beovic
 - Stephen Chang
 - Sabrina Gonzalez
-
-## Open Questions
--
