@@ -83,10 +83,29 @@ input[type="range"] {
   width: 100%;
 }
 
-.weight-value {
-  float: right;
-  font-weight: normal;
+.tier-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.tier-scale-item {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.tier-scale-item:first-child {
+  text-align: left;
+}
+
+.tier-scale-item:last-child {
+  text-align: right;
+}
+
+.tier-scale-item.active {
   color: var(--accent);
+  font-weight: 600;
 }
 
 button[type="submit"] {

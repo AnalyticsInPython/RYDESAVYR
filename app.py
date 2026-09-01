@@ -9,14 +9,21 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 from geopy.distance import geodesic
 
 import uber_client
+from citibike import get_citibike_option
 from geocode import geocode_address
 from modes import MODES
-from scoring import FACTOR_LABELS, FACTORS, rank_estimates
+from scoring import (
+    DEFAULT_TIER,
+    FACTOR_LABELS,
+    FACTORS,
+    TIER_LABELS,
+    TIER_ORDER,
+    TIER_WEIGHTS,
+    rank_modes,
+)
 
 app = Flask(__name__)
 app.secret_key = "rydesavyr-dev"
-
-DEFAULT_WEIGHT = 5
 
 
 def _valid_uber_access_token():
@@ -39,7 +46,10 @@ def _valid_uber_access_token():
 
 def _compute_results(origin, destination, weights):
     distance_miles = geodesic(origin, destination).miles
-    estimates = [mode.estimate(distance_miles) for mode in MODES]
+
+    estimates = [mode.estimate(distance_miles) for mode in MODES if mode.key != "citibike"]
+    citibike_mode = next(mode for mode in MODES if mode.key == "citibike")
+    estimates.append(get_citibike_option(origin, destination) or citibike_mode.estimate(distance_miles))
 
     access_token = _valid_uber_access_token()
     if access_token:
@@ -49,7 +59,7 @@ def _compute_results(origin, destination, weights):
                 if estimate["key"] == "uber":
                     estimate.update({k: v for k, v in live.items() if v is not None})
 
-    return rank_estimates(estimates, weights)
+    return rank_modes(estimates, weights)
 
 
 def _start_uber_login(pending_trip=None):
@@ -61,10 +71,12 @@ def _start_uber_login(pending_trip=None):
     return redirect(uber_client.authorize_url(redirect_uri, state))
 
 
-def _render(weights, results, origin_address, destination_address):
+def _render(tiers, results, origin_address, destination_address):
     return render_template(
         "index.html",
-        weights=weights,
+        tiers=tiers,
+        tier_order=TIER_ORDER,
+        tier_labels=TIER_LABELS,
         factors=FACTORS,
         factor_labels=FACTOR_LABELS,
         results=results,
@@ -77,7 +89,7 @@ def _render(weights, results, origin_address, destination_address):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    weights = {factor: DEFAULT_WEIGHT for factor in FACTORS}
+    tiers = {factor: DEFAULT_TIER for factor in FACTORS}
     results = None
     origin_address = ""
     destination_address = ""
@@ -88,10 +100,14 @@ def index():
         origin_lat = request.form.get("origin_lat", "").strip()
         origin_lng = request.form.get("origin_lng", "").strip()
 
-        weights = {
-            factor: float(request.form.get(f"weight_{factor}", DEFAULT_WEIGHT))
-            for factor in FACTORS
-        }
+        def tier_for(factor):
+            raw = request.form.get(f"weight_{factor}", "")
+            if raw.isdigit() and 0 <= int(raw) < len(TIER_ORDER):
+                return TIER_ORDER[int(raw)]
+            return DEFAULT_TIER
+
+        tiers = {factor: tier_for(factor) for factor in FACTORS}
+        weights = {factor: TIER_WEIGHTS[tiers[factor]] for factor in FACTORS}
 
         try:
             if origin_lat and origin_lng:
@@ -113,6 +129,7 @@ def index():
                     "origin": origin,
                     "destination": destination,
                     "weights": weights,
+                    "tiers": tiers,
                     "origin_address": origin_address,
                     "destination_address": destination_address,
                 })
@@ -121,7 +138,7 @@ def index():
         except ValueError as exc:
             flash(str(exc))
 
-    return _render(weights, results, origin_address, destination_address)
+    return _render(tiers, results, origin_address, destination_address)
 
 
 @app.route("/uber/login")
@@ -154,7 +171,7 @@ def uber_callback():
         return redirect(url_for("index"))
 
     results = _compute_results(pending["origin"], pending["destination"], pending["weights"])
-    return _render(pending["weights"], results, pending["origin_address"], pending["destination_address"])
+    return _render(pending["tiers"], results, pending["origin_address"], pending["destination_address"])
 
 
 @app.route("/uber/disconnect")
