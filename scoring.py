@@ -35,9 +35,18 @@ def _normalize(values, lower_is_better):
     return [(v - lo) / (hi - lo) for v in values]
 
 
-def rank_modes(modes, distance_miles, weights):
-    """Estimate every mode for this trip and rank them by weighted score (0-100)."""
-    estimates = [mode.estimate(distance_miles) for mode in modes]
+def rank_modes(modes, distance_miles, weights, route_infos=None):
+    """Estimate every mode for this trip and rank them by weighted score (0-100).
+
+    ``route_infos`` maps a mode's ``google_mode`` to a
+    ``{"distance_miles", "duration_minutes"}`` dict from the Google Maps
+    Routes API. Modes without an entry fall back to the rate-card formula.
+    """
+    route_infos = route_infos or {}
+    estimates = [
+        mode.estimate(distance_miles, route_infos.get(mode.google_mode))
+        for mode in modes
+    ]
 
     normalized_by_factor = {
         factor: _normalize([e[factor] for e in estimates], LOWER_IS_BETTER[factor])

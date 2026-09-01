@@ -59,6 +59,7 @@
   {% if results %}
     <section class="results">
       <h2>Ranked options</h2>
+      {% if data_source %}<p class="data-source">{{ data_source }}</p>{% endif %}
       <table>
         <thead>
           <tr>
@@ -80,6 +81,7 @@
               <td>{{ loop.index }}</td>
               <td>
                 {{ r.label }}
+                {% if r.live %}<span class="live-badge" title="Distance and time from Google Maps">live</span>{% endif %}
                 {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
               </td>
               <td>{{ r.score }}</td>
@@ -99,9 +101,10 @@
 
   <footer>
     <p>
-      Estimates are computed from typical NYC rate cards and average speeds, not live
-      quotes from each provider — see the project README for why, and for the plan to
-      swap in real-time data (MTA, Citibike) later.
+      Distance and travel time come from the Google Maps Routes API when a
+      GOOGLE_MAPS_API_KEY is configured (rows marked <span class="live-badge">live</span>);
+      fares and impact scores are still typical NYC rate-card approximations, not live
+      quotes from each provider. See the project README for details.
     </p>
   </footer>
 
