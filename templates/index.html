@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RYDESAVYR</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>RYDESAVYR</h1>
+    <p>The best way home, ranked for what matters to you right now.</p>
+  </header>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash">
+        {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" id="trip-form">
+    <fieldset>
+      <legend>Trip</legend>
+
+      <label for="origin_address">From</label>
+      <div class="row">
+        <input type="text" id="origin_address" name="origin_address"
+               placeholder="e.g. Columbia University" value="{{ origin_address }}">
+        <button type="button" id="use-location">Use my location</button>
+      </div>
+      <input type="hidden" id="origin_lat" name="origin_lat">
+      <input type="hidden" id="origin_lng" name="origin_lng">
+      <p id="location-status" class="hint"></p>
+
+      <label for="destination_address">To (home)</label>
+      <input type="text" id="destination_address" name="destination_address"
+             placeholder="e.g. your home address" value="{{ destination_address }}">
+    </fieldset>
+
+    <fieldset>
+      <legend>What matters to you? (0 = ignore, 10 = critical)</legend>
+      {% for factor in factors %}
+        <label for="weight_{{ factor }}">
+          {{ factor_labels[factor] }}
+          <span class="weight-value" id="value_{{ factor }}">{{ weights[factor]|int }}</span>
+        </label>
+        <input type="range" min="0" max="10" step="1"
+               id="weight_{{ factor }}" name="weight_{{ factor }}"
+               value="{{ weights[factor]|int }}"
+               oninput="document.getElementById('value_{{ factor }}').textContent = this.value">
+      {% endfor %}
+    </fieldset>
+
+    <button type="submit">Find the best way home</button>
+  </form>
+
+  {% if results %}
+    <section class="results">
+      <h2>Ranked options</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Option</th>
+            <th>Score</th>
+            <th>Price</th>
+            <th>Time</th>
+            <th>Distance</th>
+            <th>Energy</th>
+            <th>Nature-vibez</th>
+            <th>Carbon</th>
+            <th>Morality</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+            <tr class="{{ 'top-pick' if loop.first else '' }}">
+              <td>{{ loop.index }}</td>
+              <td>
+                {{ r.label }}
+                {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
+              </td>
+              <td>{{ r.score }}</td>
+              <td>${{ "%.2f"|format(r.price) }}</td>
+              <td>{{ r.time }} min</td>
+              <td>{{ r.distance }} mi</td>
+              <td>{{ r.energy }}/10</td>
+              <td>{{ r.nature_vibez }}/10</td>
+              <td>{{ r.carbon }} g CO₂</td>
+              <td>{{ r.morality }}/10</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  <footer>
+    <p>
+      Estimates are computed from typical NYC rate cards and average speeds, not live
+      quotes from each provider — see the project README for why, and for the plan to
+      swap in real-time data (MTA, Citibike) later.
+    </p>
+  </footer>
+
+  <script>
+    document.getElementById('use-location').addEventListener('click', function () {
+      const status = document.getElementById('location-status');
+      if (!navigator.geolocation) {
+        status.textContent = 'Geolocation is not supported by this browser.';
+        return;
+      }
+      status.textContent = 'Locating…';
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          document.getElementById('origin_lat').value = position.coords.latitude;
+          document.getElementById('origin_lng').value = position.coords.longitude;
+          document.getElementById('origin_address').value = '';
+          document.getElementById('origin_address').placeholder = 'Using your current location';
+          status.textContent = 'Location set ✓';
+        },
+        function () {
+          status.textContent = 'Could not get your location — enter an address instead.';
+        }
+      );
+    });
+
+    document.getElementById('origin_address').addEventListener('input', function () {
+      document.getElementById('origin_lat').value = '';
+      document.getElementById('origin_lng').value = '';
+    });
+  </script>
+</body>
+</html>

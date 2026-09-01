@@ -1,0 +1,125 @@
+:root {
+  color-scheme: light dark;
+  --accent: #2f7a4f;
+  --border: #d8d8d8;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  line-height: 1.4;
+}
+
+header h1 {
+  margin-bottom: 0.2rem;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  padding: 1rem 1.2rem;
+}
+
+legend {
+  font-weight: 600;
+  padding: 0 0.4rem;
+}
+
+label {
+  display: block;
+  margin-top: 0.8rem;
+  font-weight: 500;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.row input[type="text"] {
+  flex: 1;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0.3rem 0 0;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+.weight-value {
+  float: right;
+  font-weight: normal;
+  color: var(--accent);
+}
+
+button[type="submit"] {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.7rem 1.4rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button[type="button"] {
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: white;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+tr.top-pick {
+  background: rgba(47, 122, 79, 0.1);
+  font-weight: 600;
+}
+
+.notes {
+  font-weight: normal;
+  font-size: 0.78rem;
+  color: #666;
+}
+
+.flash {
+  background: #fdecea;
+  border: 1px solid #f5c2c0;
+  color: #7a1f1a;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+footer {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: #777;
+}
