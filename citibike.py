@@ -201,8 +201,8 @@ def get_citibike_option(origin, destination):
     """Public entry point. origin/destination are (lat, lon) tuples.
 
     Returns a dict shaped like modes.py's Mode.estimate() output (key,
-    label, distance, time, price, energy, nature_vibez, carbon, morality,
-    notes) so it drops straight into scoring.py's ranking, or None if a
+    label, distance, time, price, energy, nature_vibez, carbon, notes) so
+    it drops straight into scoring.py's ranking, or None if a
     real Citibike trip isn't currently available (no bikes, no docks, or
     the feed is down) — callers should skip it the same way they'd skip
     any other missing source.
@@ -232,7 +232,6 @@ def get_citibike_option(origin, destination):
         "energy": 4 if is_ebike else 7,
         "nature_vibez": 8,
         "carbon": 0,
-        "morality": 9,
         "notes": notes,
     }
 
