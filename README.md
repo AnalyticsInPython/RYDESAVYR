@@ -55,7 +55,7 @@ There's no live-quote API available for most of these services (see below),
 so each mode in `modes.py` is a simple formula: a rate card (base fare + cost
 per mile/minute), an average NYC speed, and a route-directness factor applied
 to the straight-line distance between the two geocoded addresses. Energy,
-nature-vibez, and carbon are fixed per-mode scores that are easy to tune in
+scenery, and carbon are fixed per-mode scores that are easy to tune in
 `modes.py`. `scoring.py` normalizes every factor 0-1 across the candidate
 modes and combines them using the user's per-factor importance tiers ("does
 not matter" / "neutral" / "critical").
