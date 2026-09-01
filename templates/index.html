@@ -10,6 +10,16 @@
   <header>
     <h1>RYDESAVYR</h1>
     <p>The best way home, ranked for what matters to you right now.</p>
+    {% if uber_available %}
+      <div class="uber-status">
+        {% if uber_connected %}
+          <span>Uber connected ✓</span>
+          <a href="{{ url_for('uber_disconnect') }}">disconnect</a>
+        {% else %}
+          <a href="{{ url_for('uber_login') }}" class="uber-login-button">Log in with Uber</a>
+        {% endif %}
+      </div>
+    {% endif %}
   </header>
 
   {% with messages = get_flashed_messages() %}
@@ -37,6 +47,10 @@
       <label for="destination_address">To (home)</label>
       <input type="text" id="destination_address" name="destination_address"
              placeholder="e.g. your home address" value="{{ destination_address }}">
+
+      {% if uber_available and not uber_connected %}
+        <p class="hint">Not signed in yet? Searching will also prompt you to log in with Uber.</p>
+      {% endif %}
     </fieldset>
 
     <fieldset>
