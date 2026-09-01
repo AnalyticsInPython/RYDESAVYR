@@ -3,17 +3,23 @@ from geopy.distance import geodesic
 
 from geocode import geocode_address
 from modes import MODES
-from scoring import FACTOR_LABELS, FACTORS, rank_modes
+from scoring import (
+    DEFAULT_TIER,
+    FACTOR_LABELS,
+    FACTORS,
+    TIER_LABELS,
+    TIER_ORDER,
+    TIER_WEIGHTS,
+    rank_modes,
+)
 
 app = Flask(__name__)
 app.secret_key = "rydesavyr-dev"
 
-DEFAULT_WEIGHT = 5
-
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    weights = {factor: DEFAULT_WEIGHT for factor in FACTORS}
+    tiers = {factor: DEFAULT_TIER for factor in FACTORS}
     results = None
     origin_address = ""
     destination_address = ""
@@ -24,10 +30,14 @@ def index():
         origin_lat = request.form.get("origin_lat", "").strip()
         origin_lng = request.form.get("origin_lng", "").strip()
 
-        weights = {
-            factor: float(request.form.get(f"weight_{factor}", DEFAULT_WEIGHT))
-            for factor in FACTORS
-        }
+        def tier_for(factor):
+            raw = request.form.get(f"weight_{factor}", "")
+            if raw.isdigit() and 0 <= int(raw) < len(TIER_ORDER):
+                return TIER_ORDER[int(raw)]
+            return DEFAULT_TIER
+
+        tiers = {factor: tier_for(factor) for factor in FACTORS}
+        weights = {factor: TIER_WEIGHTS[tiers[factor]] for factor in FACTORS}
 
         try:
             if origin_lat and origin_lng:
@@ -48,7 +58,10 @@ def index():
 
     return render_template(
         "index.html",
-        weights=weights,
+        tiers=tiers,
+        tier_order=TIER_ORDER,
+        tier_labels=TIER_LABELS,
+        tier_label_list=[TIER_LABELS[tier] for tier in TIER_ORDER],
         factors=FACTORS,
         factor_labels=FACTOR_LABELS,
         results=results,

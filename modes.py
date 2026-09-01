@@ -24,7 +24,6 @@ class Mode:
     energy_cost: float       # 0-10, higher = more personal effort/battery drain
     nature_vibez: float      # 0-10, higher = more pleasant/scenic
     carbon_g_per_mile: float
-    morality: float          # 0-10, higher = safer/more ethical
     notes: str = field(default="")
 
     def estimate(self, distance_miles: float) -> dict:
@@ -42,7 +41,6 @@ class Mode:
             "energy": self.energy_cost,
             "nature_vibez": self.nature_vibez,
             "carbon": round(carbon),
-            "morality": self.morality,
             "notes": self.notes,
         }
 
@@ -51,55 +49,55 @@ MODES = [
     Mode(
         "uber", "Uber (UberX)", avg_speed_mph=18, route_factor=1.3, base_fare=3.00,
         cost_per_mile=1.75, cost_per_minute=0.35, wait_minutes=5,
-        energy_cost=1, nature_vibez=2, carbon_g_per_mile=404, morality=6,
+        energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         notes="Estimated from typical NYC UberX rates, not a live quote.",
     ),
     Mode(
         "lyft", "Lyft", avg_speed_mph=18, route_factor=1.3, base_fare=2.75,
         cost_per_mile=1.70, cost_per_minute=0.32, wait_minutes=5,
-        energy_cost=1, nature_vibez=2, carbon_g_per_mile=404, morality=6,
+        energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         notes="Estimated from typical NYC Lyft rates, not a live quote.",
     ),
     Mode(
         "citibike", "Citibike", avg_speed_mph=8, route_factor=1.2, base_fare=4.79,
         cost_per_mile=0, cost_per_minute=0, wait_minutes=3,
-        energy_cost=7, nature_vibez=8, carbon_g_per_mile=0, morality=9,
+        energy_cost=7, nature_vibez=8, carbon_g_per_mile=0,
         notes="Single-ride classic-bike price; assumes the trip fits the 30-minute window.",
     ),
     Mode(
         "subway", "Subway", avg_speed_mph=17, route_factor=1.4, base_fare=2.90,
         cost_per_mile=0, cost_per_minute=0, wait_minutes=6,
-        energy_cost=3, nature_vibez=3, carbon_g_per_mile=90, morality=9,
+        energy_cost=3, nature_vibez=3, carbon_g_per_mile=90,
         notes="Flat MTA fare; wait time approximates average headway.",
     ),
     Mode(
         "bus", "Bus", avg_speed_mph=8, route_factor=1.3, base_fare=2.90,
         cost_per_mile=0, cost_per_minute=0, wait_minutes=8,
-        energy_cost=3, nature_vibez=3, carbon_g_per_mile=150, morality=9,
+        energy_cost=3, nature_vibez=3, carbon_g_per_mile=150,
         notes="Flat MTA fare; slower average speed due to street traffic.",
     ),
     Mode(
         "train", "Commuter Train (LIRR / Metro-North)", avg_speed_mph=40, route_factor=1.1,
         base_fare=7.00, cost_per_mile=0.25, cost_per_minute=0, wait_minutes=15,
-        energy_cost=2, nature_vibez=4, carbon_g_per_mile=120, morality=9,
+        energy_cost=2, nature_vibez=4, carbon_g_per_mile=120,
         notes="Rough estimate for trips beyond the subway network; fares vary a lot by zone.",
     ),
     Mode(
         "walk", "Walking", avg_speed_mph=3, route_factor=1.2, base_fare=0,
         cost_per_mile=0, cost_per_minute=0, wait_minutes=0,
-        energy_cost=9, nature_vibez=6, carbon_g_per_mile=0, morality=10,
+        energy_cost=9, nature_vibez=6, carbon_g_per_mile=0,
         notes="Free and healthy, but slow and physically demanding over long distances.",
     ),
     Mode(
         "taxi", "Taxi (Curb / yellow cab)", avg_speed_mph=15, route_factor=1.3, base_fare=3.00,
         cost_per_mile=2.80, cost_per_minute=0.50, wait_minutes=5,
-        energy_cost=1, nature_vibez=2, carbon_g_per_mile=404, morality=6,
+        energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         notes="Approximated from the NYC TLC rate card; Curb has no public fare API.",
     ),
     Mode(
         "zipcar", "Zipcar", avg_speed_mph=20, route_factor=1.3, base_fare=12.00,
         cost_per_mile=0.45, cost_per_minute=0, wait_minutes=10,
-        energy_cost=4, nature_vibez=3, carbon_g_per_mile=350, morality=6,
+        energy_cost=4, nature_vibez=3, carbon_g_per_mile=350,
         notes="Assumes a 1-hour minimum booking; most NYC Zipcars must return to their "
               "home spot, so this is a rough one-way approximation.",
     ),

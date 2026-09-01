@@ -40,17 +40,21 @@
     </fieldset>
 
     <fieldset>
-      <legend>What matters to you? (0 = ignore, 10 = critical)</legend>
+      <legend>What matters to you?</legend>
       {% for factor in factors %}
         <label for="weight_{{ factor }}">
           {{ factor_labels[factor] }}
-          <span class="weight-value" id="value_{{ factor }}">{{ weights[factor]|int }}</span>
+          <span class="weight-value" id="value_{{ factor }}">{{ tier_labels[tiers[factor]] }}</span>
         </label>
-        <input type="range" min="0" max="10" step="1"
+        <input type="range" min="0" max="{{ tier_order|length - 1 }}" step="1"
                id="weight_{{ factor }}" name="weight_{{ factor }}"
-               value="{{ weights[factor]|int }}"
-               oninput="document.getElementById('value_{{ factor }}').textContent = this.value">
+               list="tier-ticks"
+               value="{{ tier_order.index(tiers[factor]) }}"
+               oninput="document.getElementById('value_{{ factor }}').textContent = TIER_LABELS[this.value]">
       {% endfor %}
+      <datalist id="tier-ticks">
+        {% for tier in tier_order %}<option value="{{ loop.index0 }}"></option>{% endfor %}
+      </datalist>
     </fieldset>
 
     <button type="submit">Find the best way home</button>
@@ -71,7 +75,6 @@
             <th>Energy</th>
             <th>Nature-vibez</th>
             <th>Carbon</th>
-            <th>Morality</th>
           </tr>
         </thead>
         <tbody>
@@ -89,7 +92,6 @@
               <td>{{ r.energy }}/10</td>
               <td>{{ r.nature_vibez }}/10</td>
               <td>{{ r.carbon }} g CO₂</td>
-              <td>{{ r.morality }}/10</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -106,6 +108,8 @@
   </footer>
 
   <script>
+    const TIER_LABELS = {{ tier_label_list|tojson }};
+
     document.getElementById('use-location').addEventListener('click', function () {
       const status = document.getElementById('location-status');
       if (!navigator.geolocation) {

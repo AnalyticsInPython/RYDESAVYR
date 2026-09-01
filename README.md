@@ -3,7 +3,7 @@
 A small Flask web app that estimates every way home (rideshare, taxi, transit,
 biking, walking, car share) for a trip and ranks them by whatever the user
 cares about most — price, time, distance, personal energy, scenery
-("nature-vibez"), carbon footprint, and morality. See `proposal.md` for the
+("nature-vibez"), and carbon footprint. See `proposal.md` for the
 full project background.
 
 ## Running it

@@ -1,8 +1,8 @@
 """Weighted ranking across the factors from the proposal: price, time,
-distance, energy, nature-vibez, carbon footprint, and morality.
+distance, energy, nature-vibez, and carbon footprint.
 """
 
-FACTORS = ["price", "time", "distance", "energy", "nature_vibez", "carbon", "morality"]
+FACTORS = ["price", "time", "distance", "energy", "nature_vibez", "carbon"]
 
 FACTOR_LABELS = {
     "price": "Price",
@@ -11,7 +11,6 @@ FACTOR_LABELS = {
     "energy": "Energy",
     "nature_vibez": "Nature-vibez",
     "carbon": "Carbon footprint",
-    "morality": "Morality",
 }
 
 # True where a lower raw value is the better outcome for that factor.
@@ -22,8 +21,25 @@ LOWER_IS_BETTER = {
     "energy": True,
     "carbon": True,
     "nature_vibez": False,
-    "morality": False,
 }
+
+# Three-tier weighting: "does not matter" drops the factor from scoring
+# entirely, "critical" counts 3x as much as "neutral".
+TIER_ORDER = ["none", "neutral", "critical"]
+
+TIER_LABELS = {
+    "none": "Does not matter",
+    "neutral": "Neutral",
+    "critical": "Critical",
+}
+
+TIER_WEIGHTS = {
+    "none": 0,
+    "neutral": 1,
+    "critical": 3,
+}
+
+DEFAULT_TIER = "neutral"
 
 
 def _normalize(values, lower_is_better):
