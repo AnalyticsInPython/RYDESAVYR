@@ -18,7 +18,6 @@ from scoring import (
     FACTORS,
     TIER_LABELS,
     TIER_ORDER,
-    TIER_WEIGHTS,
     rank_modes,
 )
 
@@ -44,7 +43,7 @@ def _valid_uber_access_token():
     return token["access_token"]
 
 
-def _compute_results(origin, destination, weights):
+def _compute_results(origin, destination, tiers):
     distance_miles = geodesic(origin, destination).miles
 
     estimates = [mode.estimate(distance_miles) for mode in MODES if mode.key != "citibike"]
@@ -59,7 +58,7 @@ def _compute_results(origin, destination, weights):
                 if estimate["key"] == "uber":
                     estimate.update({k: v for k, v in live.items() if v is not None})
 
-    return rank_modes(estimates, weights)
+    return rank_modes(estimates, tiers)
 
 
 def _start_uber_login(pending_trip=None):
@@ -107,7 +106,6 @@ def index():
             return DEFAULT_TIER
 
         tiers = {factor: tier_for(factor) for factor in FACTORS}
-        weights = {factor: TIER_WEIGHTS[tiers[factor]] for factor in FACTORS}
 
         try:
             if origin_lat and origin_lng:
@@ -128,13 +126,12 @@ def index():
                 return _start_uber_login({
                     "origin": origin,
                     "destination": destination,
-                    "weights": weights,
                     "tiers": tiers,
                     "origin_address": origin_address,
                     "destination_address": destination_address,
                 })
 
-            results = _compute_results(origin, destination, weights)
+            results = _compute_results(origin, destination, tiers)
         except ValueError as exc:
             flash(str(exc))
 
@@ -170,7 +167,7 @@ def uber_callback():
     if pending is None:
         return redirect(url_for("index"))
 
-    results = _compute_results(pending["origin"], pending["destination"], pending["weights"])
+    results = _compute_results(pending["origin"], pending["destination"], pending["tiers"])
     return _render(pending["tiers"], results, pending["origin_address"], pending["destination_address"])
 
 
