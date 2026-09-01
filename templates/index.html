@@ -42,15 +42,17 @@
     <fieldset>
       <legend>What matters to you?</legend>
       {% for factor in factors %}
-        <label for="weight_{{ factor }}">
-          {{ factor_labels[factor] }}
-          <span class="weight-value" id="value_{{ factor }}">{{ tier_labels[tiers[factor]] }}</span>
-        </label>
+        <label for="weight_{{ factor }}">{{ factor_labels[factor] }}</label>
         <input type="range" min="0" max="{{ tier_order|length - 1 }}" step="1"
                id="weight_{{ factor }}" name="weight_{{ factor }}"
                list="tier-ticks"
                value="{{ tier_order.index(tiers[factor]) }}"
-               oninput="document.getElementById('value_{{ factor }}').textContent = TIER_LABELS[this.value]">
+               oninput="updateTierScale('{{ factor }}', this.value)">
+        <div class="tier-scale" id="scale_{{ factor }}">
+          {% for tier in tier_order %}
+            <span class="tier-scale-item {{ 'active' if tiers[factor] == tier else '' }}">{{ tier_labels[tier] }}</span>
+          {% endfor %}
+        </div>
       {% endfor %}
       <datalist id="tier-ticks">
         {% for tier in tier_order %}<option value="{{ loop.index0 }}"></option>{% endfor %}
@@ -108,7 +110,12 @@
   </footer>
 
   <script>
-    const TIER_LABELS = {{ tier_label_list|tojson }};
+    function updateTierScale(factor, value) {
+      const items = document.querySelectorAll('#scale_' + factor + ' .tier-scale-item');
+      items.forEach(function (item, i) {
+        item.classList.toggle('active', i === Number(value));
+      });
+    }
 
     document.getElementById('use-location').addEventListener('click', function () {
       const status = document.getElementById('location-status');

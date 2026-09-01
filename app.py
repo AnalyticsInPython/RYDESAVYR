@@ -61,7 +61,6 @@ def index():
         tiers=tiers,
         tier_order=TIER_ORDER,
         tier_labels=TIER_LABELS,
-        tier_label_list=[TIER_LABELS[tier] for tier in TIER_ORDER],
         factors=FACTORS,
         factor_labels=FACTOR_LABELS,
         results=results,
