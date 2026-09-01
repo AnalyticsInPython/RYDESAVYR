@@ -10,6 +10,16 @@
   <header>
     <h1>RYDESAVYR</h1>
     <p>The best way home, ranked for what matters to you right now.</p>
+    {% if uber_available %}
+      <div class="uber-status">
+        {% if uber_connected %}
+          <span>Uber connected ✓</span>
+          <a href="{{ url_for('uber_disconnect') }}">disconnect</a>
+        {% else %}
+          <a href="{{ url_for('uber_login') }}" class="uber-login-button">Log in with Uber</a>
+        {% endif %}
+      </div>
+    {% endif %}
   </header>
 
   {% with messages = get_flashed_messages() %}
@@ -34,23 +44,33 @@
       <input type="hidden" id="origin_lng" name="origin_lng">
       <p id="location-status" class="hint"></p>
 
-      <label for="destination_address">To (home)</label>
+      <label for="destination_address">To</label>
       <input type="text" id="destination_address" name="destination_address"
              placeholder="e.g. your home address" value="{{ destination_address }}">
+
+      {% if uber_available and not uber_connected %}
+        <p class="hint">Not signed in yet? Searching will also prompt you to log in with Uber.</p>
+      {% endif %}
     </fieldset>
 
     <fieldset>
-      <legend>What matters to you? (0 = ignore, 10 = critical)</legend>
+      <legend>What matters to you?</legend>
       {% for factor in factors %}
-        <label for="weight_{{ factor }}">
-          {{ factor_labels[factor] }}
-          <span class="weight-value" id="value_{{ factor }}">{{ weights[factor]|int }}</span>
-        </label>
-        <input type="range" min="0" max="10" step="1"
+        <label for="weight_{{ factor }}">{{ factor_labels[factor] }}</label>
+        <input type="range" min="0" max="{{ tier_order|length - 1 }}" step="1"
                id="weight_{{ factor }}" name="weight_{{ factor }}"
-               value="{{ weights[factor]|int }}"
-               oninput="document.getElementById('value_{{ factor }}').textContent = this.value">
+               list="tier-ticks"
+               value="{{ tier_order.index(tiers[factor]) }}"
+               oninput="updateTierScale('{{ factor }}', this.value)">
+        <div class="tier-scale" id="scale_{{ factor }}">
+          {% for tier in tier_order %}
+            <span class="tier-scale-item {{ 'active' if tiers[factor] == tier else '' }}">{{ tier_labels[tier] }}</span>
+          {% endfor %}
+        </div>
       {% endfor %}
+      <datalist id="tier-ticks">
+        {% for tier in tier_order %}<option value="{{ loop.index0 }}"></option>{% endfor %}
+      </datalist>
     </fieldset>
 
     <button type="submit">Find the best way home</button>
@@ -70,9 +90,8 @@
             <th>Time</th>
             <th>Distance</th>
             <th>Energy</th>
-            <th>Nature-vibez</th>
+            <th>Scenery</th>
             <th>Carbon</th>
-            <th>Morality</th>
           </tr>
         </thead>
         <tbody>
@@ -91,7 +110,6 @@
               <td>{{ r.energy }}/10</td>
               <td>{{ r.nature_vibez }}/10</td>
               <td>{{ r.carbon }} g CO₂</td>
-              <td>{{ r.morality }}/10</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -109,6 +127,13 @@
   </footer>
 
   <script>
+    function updateTierScale(factor, value) {
+      const items = document.querySelectorAll('#scale_' + factor + ' .tier-scale-item');
+      items.forEach(function (item, i) {
+        item.classList.toggle('active', i === Number(value));
+      });
+    }
+
     document.getElementById('use-location').addEventListener('click', function () {
       const status = document.getElementById('location-status');
       if (!navigator.geolocation) {
