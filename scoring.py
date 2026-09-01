@@ -51,10 +51,8 @@ def _normalize(values, lower_is_better):
     return [(v - lo) / (hi - lo) for v in values]
 
 
-def rank_modes(modes, distance_miles, weights):
-    """Estimate every mode for this trip and rank them by weighted score (0-100)."""
-    estimates = [mode.estimate(distance_miles) for mode in modes]
-
+def rank_modes(estimates, weights):
+    """Rank a list of already-computed mode estimates by weighted score (0-100)."""
     normalized_by_factor = {
         factor: _normalize([e[factor] for e in estimates], LOWER_IS_BETTER[factor])
         for factor in FACTORS

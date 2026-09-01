@@ -1,6 +1,7 @@
 from flask import Flask, flash, render_template, request
 from geopy.distance import geodesic
 
+from citibike import get_citibike_option
 from geocode import geocode_address
 from modes import MODES
 from scoring import (
@@ -52,7 +53,12 @@ def index():
             destination = geocode_address(destination_address)
 
             distance_miles = geodesic(origin, destination).miles
-            results = rank_modes(MODES, distance_miles, weights)
+
+            estimates = [mode.estimate(distance_miles) for mode in MODES if mode.key != "citibike"]
+            citibike_mode = next(mode for mode in MODES if mode.key == "citibike")
+            estimates.append(get_citibike_option(origin, destination) or citibike_mode.estimate(distance_miles))
+
+            results = rank_modes(estimates, weights)
         except ValueError as exc:
             flash(str(exc))
 
