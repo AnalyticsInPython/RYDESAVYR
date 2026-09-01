@@ -17,11 +17,21 @@ python app.py
 
 Then open http://127.0.0.1:5050.
 
-## Live Uber pricing (optional)
+## Live Uber pricing (needs Uber's approval — not actually self-serve)
 
-Uber's Rides API is self-serve for personal use — no business approval
-needed until you want to go beyond yourself + 4 other registered
-developers. To turn it on:
+The OAuth "Log in with Uber" login flow is wired up end-to-end
+(`uber_client.py` + the `/uber/*` routes in `app.py`), but **as of testing
+this in September 2026, Uber's dashboard blocks it**: a freshly-created app
+gets `invalid_scope` when requesting the `request` scope, and the Access
+Token tab says plainly:
+
+> Your application currently does not have access to Authorization Code
+> scopes. Please contact your Uber business development representative or
+> Uber point of contact to request access.
+
+So despite what older docs/SDK fragments suggested, this scope is gated
+behind an actual Uber Business Development relationship — the same as
+Lyft, Zipcar, and Curb (see below). If you get that access in the future:
 
 1. Sign in at https://developer.uber.com with your own Uber account and
    create an application (any API suite works).
@@ -36,18 +46,16 @@ redirects to Uber's own login page (no separate "connect account" step —
 it's part of the same tap that starts the search, since most people will
 be doing this one-handed on a phone). After they grant access, it bounces
 back and shows a live UberX price/ETA instead of the formula estimate.
-Nobody else's search can use it until Uber grants your app full production
-access — until then it only works for accounts you've explicitly added as
-developers on the app.
 
-Without `UBER_CLIENT_ID`/`UBER_CLIENT_SECRET` set, this is skipped entirely
-and Uber falls back to the same rate-card formula as every other mode.
+Without `UBER_CLIENT_ID`/`UBER_CLIENT_SECRET` set, or if Uber rejects the
+scope, this fails safe and Uber falls back to the same rate-card formula
+as every other mode — nothing else breaks.
 
 `uber_client.py` reconstructs the live-estimate response shape from Uber's
 official Python SDK and cached doc fragments, since developer.uber.com's
 docs are JavaScript-rendered and couldn't be fully verified here — if a
-field comes back missing or renamed once you test with a real account,
-adjust `get_live_estimate` in that file.
+field comes back missing or renamed once real access is granted, adjust
+`get_live_estimate` in that file.
 
 ## How estimates are computed
 
@@ -73,7 +81,9 @@ key required.
   `Mode.estimate()` call for a real API request.
 - **Citibike**: live pricing is already wired up via the GBFS feed —
   see `citibike.py`.
-- **Uber**: live pricing is now wired up — see "Live Uber pricing" above.
+- **Uber**: OAuth login is wired up, but Uber currently rejects the
+  `request` scope for a freshly-created app — see "Live Uber pricing"
+  above. Gated behind Business Development, same as Lyft/Zipcar/Curb.
 - **Lyft**: its public developer portal has stopped onboarding new apps, so
   this stays formula-based for now.
 - **Zipcar**: has a partner API, gated behind an approval email.
@@ -86,5 +96,6 @@ key required.
 
 - Swap in MTA GTFS-realtime for live subway/bus arrival times.
 - Persist a saved "home" address per user instead of typing it every time.
-- Apply for Uber/Lyft/Zipcar partner API access if live quotes become worth
-  the integration cost.
+- Contact Uber Business Development to request `request`-scope access for
+  live Uber pricing (see "Live Uber pricing" above); apply for Lyft/Zipcar
+  partner API access too if live quotes become worth the integration cost.

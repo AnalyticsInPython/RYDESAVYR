@@ -156,8 +156,10 @@ def uber_callback():
     error = request.args.get("error")
     state = request.args.get("state")
 
-    if error:
+    if error == "access_denied":
         flash("Uber sign-in was cancelled — showing an estimated Uber price instead.")
+    elif error:
+        flash(f"Uber sign-in failed ({error}) — showing an estimated Uber price instead.")
     elif not state or state != expected_state:
         flash("Uber sign-in couldn't be verified — showing an estimated Uber price instead.")
     else:
