@@ -5,12 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from geopy.distance import geodesic
 
 import uber_client
 from citibike import get_citibike_option
-from geocode import geocode_address
+from geocode import geocode_address, search_addresses
 from modes import MODES
 from scoring import (
     DEFAULT_TIER,
@@ -86,6 +86,11 @@ def _render(tiers, results, origin_address, destination_address):
     )
 
 
+@app.route("/geocode/search")
+def geocode_search():
+    return jsonify(search_addresses(request.args.get("q", "")))
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     tiers = {factor: DEFAULT_TIER for factor in FACTORS}
@@ -98,6 +103,8 @@ def index():
         destination_address = request.form.get("destination_address", "").strip()
         origin_lat = request.form.get("origin_lat", "").strip()
         origin_lng = request.form.get("origin_lng", "").strip()
+        destination_lat = request.form.get("destination_lat", "").strip()
+        destination_lng = request.form.get("destination_lng", "").strip()
 
         def tier_for(factor):
             raw = request.form.get(f"weight_{factor}", "")
@@ -115,9 +122,12 @@ def index():
             else:
                 raise ValueError("Share your location or enter a starting address.")
 
-            if not destination_address:
+            if destination_lat and destination_lng:
+                destination = (float(destination_lat), float(destination_lng))
+            elif destination_address:
+                destination = geocode_address(destination_address)
+            else:
                 raise ValueError("Enter a destination address.")
-            destination = geocode_address(destination_address)
 
             # Auto-connect to Uber the first time it's needed, instead of
             # making the user find a separate "connect account" button —
