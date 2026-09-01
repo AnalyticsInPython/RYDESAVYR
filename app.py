@@ -181,4 +181,6 @@ def uber_disconnect():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # 5000 collides with macOS's AirPlay Receiver (Control Center), which
+    # also listens on that port and silently swallows browser connections.
+    app.run(debug=True, port=5050)

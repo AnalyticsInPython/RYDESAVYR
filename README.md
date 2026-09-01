@@ -15,7 +15,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Then open http://127.0.0.1:5000.
+Then open http://127.0.0.1:5050.
 
 ## Live Uber pricing (optional)
 
@@ -26,7 +26,7 @@ developers. To turn it on:
 1. Sign in at https://developer.uber.com with your own Uber account and
    create an application (any API suite works).
 2. Under the app's Authentication settings, add this exact redirect URI:
-   `http://127.0.0.1:5000/uber/callback`
+   `http://127.0.0.1:5050/uber/callback`
 3. Copy `.env.example` to `.env` and fill in `UBER_CLIENT_ID` /
    `UBER_CLIENT_SECRET` from that app.
 4. Restart `python app.py`.
