@@ -1,5 +1,5 @@
 """Weighted ranking across the factors from the proposal: price, time,
-distance, energy, nature-vibez, and carbon footprint.
+distance, energy, scenery, and carbon footprint.
 """
 
 FACTORS = ["price", "time", "distance", "energy", "nature_vibez", "carbon"]
@@ -9,7 +9,7 @@ FACTOR_LABELS = {
     "time": "Time",
     "distance": "Distance",
     "energy": "Energy",
-    "nature_vibez": "Nature-vibez",
+    "nature_vibez": "Scenery",
     "carbon": "Carbon footprint",
 }
 
