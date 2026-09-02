@@ -10,7 +10,7 @@ For the driving-based modes (Uber, Lyft, Taxi), app.py prefers
 routing.py over `estimate`'s straight-line x route_factor guess -- see
 routing.py's docstring for why only those modes get that treatment. This is
 separate from `route_profile` below, which only controls which travel mode
-draws this mode's line on the results-page Google Map.
+draws this mode's line on the results-page map.
 """
 
 from dataclasses import dataclass, field
@@ -30,9 +30,10 @@ class Mode:
     nature_vibez: float      # 0-10, higher = more pleasant/scenic
     carbon_g_per_mile: float
     notes: str = field(default="")
-    # Which Google Maps Directions travel mode (see templates/index.html)
-    # draws this mode's line on the results map: "driving", "cycling",
-    # "walking", or "transit" (the default, for subway/bus/commuter rail).
+    # Which routing engine (see templates/index.html) draws this mode's
+    # line on the results map: "driving", "cycling", "walking", or
+    # "transit" (the default, for subway/bus/commuter rail, which has no
+    # live routing available and falls back to the straight-line estimate).
     route_profile: str = field(default="transit")
 
     def _priced(self, route_miles: float, travel_minutes: float) -> dict:

@@ -1,10 +1,6 @@
-import os
-
 from dotenv import load_dotenv
 
 load_dotenv()
-
-GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 
 from flask import Flask, flash, jsonify, render_template, request
 from geopy.distance import geodesic
@@ -73,7 +69,6 @@ def _render(tiers, results, origin_address, destination_address, origin=None, de
         destination_address=destination_address,
         origin=origin,
         destination=destination,
-        google_maps_api_key=GOOGLE_MAPS_API_KEY,
     )
 
 

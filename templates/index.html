@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RYDESAVYR</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -76,14 +78,14 @@
     <section class="results">
       <h2>Ranked options</h2>
 
-      {% if origin and destination and google_maps_api_key %}
+      {% if origin and destination %}
         <div id="map"></div>
         <p id="map-status" class="hint"></p>
         <div class="map-legend">
           <span><i class="legend-swatch driving"></i> Uber / Lyft / Taxi — live driving route</span>
           <span><i class="legend-swatch cycling"></i> Citibike — live cycling route</span>
           <span><i class="legend-swatch walking"></i> Walking — live walking route</span>
-          <span><i class="legend-swatch transit"></i> Subway / Bus / Train — live transit route</span>
+          <span><i class="legend-swatch transit"></i> Subway / Bus / Train — straight-line estimate</span>
         </div>
         <p class="hint">Click a row below to show that option's route on the map.</p>
       {% endif %}
@@ -308,83 +310,65 @@
     setupAutocomplete('destination_address', 'destination_lat', 'destination_lng');
   </script>
 
-  {% if results and origin and destination and google_maps_api_key %}
+  {% if results and origin and destination %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
-      var RYDESAVYR_ORIGIN = {{ origin|tojson }};
-      var RYDESAVYR_DESTINATION = {{ destination|tojson }};
-      var RYDESAVYR_RESULTS = {{ results|tojson }};
-      var RYDESAVYR_API_KEY = {{ google_maps_api_key|tojson }};
+      (function () {
+        var origin = {{ origin|tojson }};
+        var destination = {{ destination|tojson }};
+        var results = {{ results|tojson }};
 
-      // The Routes API's transitPreferences.allowedTravelModes is a hint,
-      // not a guarantee: if no itinerary matches, Google falls back to its
-      // own best multimodal transit route instead of returning an error,
-      // so Subway/Bus/Train may occasionally show the same route.
-      var RYDESAVYR_TRANSIT_SUBMODES = {
-        subway: ['SUBWAY'],
-        bus: ['BUS'],
-        train: ['TRAIN', 'RAIL'],
-      };
-
-      var RYDESAVYR_TRAVEL_MODE_META = {
-        driving: { travelMode: 'DRIVE', color: '#1f6feb', description: 'live driving route' },
-        cycling: { travelMode: 'BICYCLE', color: '#e8590c', description: 'live cycling route' },
-        walking: { travelMode: 'WALK', color: '#8250df', description: 'live walking route' },
-        transit: { travelMode: 'TRANSIT', color: '#0d9488', description: 'live transit route' },
-      };
-
-      // Calls the newer Routes API (routes.googleapis.com) directly rather
-      // than the Maps JavaScript API's DirectionsService, which depends on
-      // the older, separately-gated "Directions API" product.
-      function fetchRoutePolyline(originLatLng, destinationLatLng, mode) {
-        var meta = RYDESAVYR_TRAVEL_MODE_META[mode.route_profile];
-        var body = {
-          origin: { location: { latLng: { latitude: originLatLng.lat, longitude: originLatLng.lng } } },
-          destination: { location: { latLng: { latitude: destinationLatLng.lat, longitude: destinationLatLng.lng } } },
-          travelMode: meta.travelMode,
+        // Free OSRM instances that actually run distinct routing engines
+        // per mode (unlike the public router.project-osrm.org demo used by
+        // routing.py for pricing, which silently returns the car route for
+        // every profile name -- see routing.py's docstring).
+        var PROFILE_META = {
+          driving: { url: 'https://routing.openstreetmap.de/routed-car/route/v1/driving/', color: '#1f6feb', description: 'live driving route' },
+          cycling: { url: 'https://routing.openstreetmap.de/routed-bike/route/v1/driving/', color: '#e8590c', description: 'live cycling route' },
+          walking: { url: 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/', color: '#8250df', description: 'live walking route' },
         };
-        if (meta.travelMode === 'TRANSIT' && RYDESAVYR_TRANSIT_SUBMODES[mode.key]) {
-          body.transitPreferences = { allowedTravelModes: RYDESAVYR_TRANSIT_SUBMODES[mode.key] };
-        }
 
-        return fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': RYDESAVYR_API_KEY,
-            'X-Goog-FieldMask': 'routes.polyline.encodedPolyline',
-          },
-          body: JSON.stringify(body),
-        })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (!data.routes || !data.routes.length) return null;
-            return data.routes[0].polyline.encodedPolyline;
-          })
-          .catch(function () { return null; });
-      }
+        var map = L.map('map');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
 
-      function initRydesavyrMap() {
-        var origin = RYDESAVYR_ORIGIN;
-        var destination = RYDESAVYR_DESTINATION;
-        var results = RYDESAVYR_RESULTS;
-        var originLatLng = { lat: origin[0], lng: origin[1] };
-        var destinationLatLng = { lat: destination[0], lng: destination[1] };
+        L.marker(origin).addTo(map).bindPopup('Start');
+        L.marker(destination).addTo(map).bindPopup('Destination');
 
-        var bounds = new google.maps.LatLngBounds();
-        bounds.extend(originLatLng);
-        bounds.extend(destinationLatLng);
+        var bounds = L.latLngBounds([origin, destination]);
 
-        var map = new google.maps.Map(document.getElementById('map'), {
-          center: bounds.getCenter(),
-        });
-        map.fitBounds(bounds, 40);
+        // Every mode estimates from this same straight-line distance (see
+        // modes.py), so it's always shown — thin/light as a backdrop, or
+        // thick/dark when the selected mode has no live routing API of its
+        // own (subway, bus, commuter train).
+        var straightLine = L.polyline([origin, destination], {
+          color: '#bbb', weight: 2, dashArray: '6 8',
+        }).addTo(map);
 
-        new google.maps.Marker({ position: originLatLng, map: map, label: 'A' });
-        new google.maps.Marker({ position: destinationLatLng, map: map, label: 'B' });
-
+        var activeRouteLayer = null;
+        var routeCache = {};
         var statusEl = document.getElementById('map-status');
-        var activeRequestId = 0;
-        var activeRoutePolyline = null;
+
+        function fetchRoute(profile) {
+          if (routeCache[profile]) return Promise.resolve(routeCache[profile]);
+          var url = PROFILE_META[profile].url
+            + origin[1] + ',' + origin[0] + ';' + destination[1] + ',' + destination[0]
+            + '?overview=full&geometries=geojson';
+          return fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.code !== 'Ok' || !data.routes.length) return null;
+              var coords = data.routes[0].geometry.coordinates.map(function (c) {
+                return [c[1], c[0]];
+              });
+              routeCache[profile] = coords;
+              return coords;
+            })
+            .catch(function () { return null; });
+        }
 
         function selectRoute(key) {
           var mode = results.find(function (r) { return r.key === key; });
@@ -394,33 +378,31 @@
             row.classList.toggle('selected-route', row.dataset.key === key);
           });
 
-          var meta = RYDESAVYR_TRAVEL_MODE_META[mode.route_profile];
-          var requestId = ++activeRequestId;
+          if (activeRouteLayer) {
+            map.removeLayer(activeRouteLayer);
+            activeRouteLayer = null;
+          }
+
+          var meta = PROFILE_META[mode.route_profile];
+          if (!meta) {
+            straightLine.setStyle({ color: '#333', weight: 5, dashArray: '6 8' });
+            statusEl.textContent = 'Showing ' + mode.label + ': straight-line estimate — no live transit routing API available.';
+            map.fitBounds(bounds, { padding: [40, 40] });
+            return;
+          }
+
+          straightLine.setStyle({ color: '#bbb', weight: 2, dashArray: '6 8' });
           statusEl.textContent = 'Showing ' + mode.label + ': loading route…';
 
-          fetchRoutePolyline(originLatLng, destinationLatLng, mode).then(function (encodedPolyline) {
-            if (requestId !== activeRequestId) return; // superseded by a later click
-
-            if (activeRoutePolyline) {
-              activeRoutePolyline.setMap(null);
-              activeRoutePolyline = null;
-            }
-
-            if (!encodedPolyline) {
-              statusEl.textContent = 'Showing ' + mode.label + ': live route unavailable right now.';
-              map.fitBounds(bounds, 40);
+          fetchRoute(mode.route_profile).then(function (coords) {
+            if (!coords) {
+              statusEl.textContent = 'Showing ' + mode.label + ': live route unavailable right now — straight-line reference shown instead.';
+              map.fitBounds(bounds, { padding: [40, 40] });
               return;
             }
-
-            var path = google.maps.geometry.encoding.decodePath(encodedPolyline);
-            activeRoutePolyline = new google.maps.Polyline({
-              path: path, strokeColor: meta.color, strokeWeight: 4, map: map,
-            });
-
-            var routeBounds = new google.maps.LatLngBounds();
-            path.forEach(function (point) { routeBounds.extend(point); });
-            map.fitBounds(routeBounds, 40);
+            activeRouteLayer = L.polyline(coords, { color: meta.color, weight: 4 }).addTo(map);
             statusEl.textContent = 'Showing ' + mode.label + ': ' + meta.description + '.';
+            map.fitBounds(activeRouteLayer.getBounds().extend(bounds), { padding: [40, 40] });
           });
         }
 
@@ -428,11 +410,10 @@
           row.addEventListener('click', function () { selectRoute(row.dataset.key); });
         });
 
+        map.fitBounds(bounds, { padding: [40, 40] });
         selectRoute(results[0].key);
-      }
+      })();
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=geometry&callback=initRydesavyrMap"
-            async></script>
   {% endif %}
 </body>
 </html>
