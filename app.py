@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from geopy.distance import geodesic
 
@@ -172,6 +174,7 @@ def _render_results(tiers, results, origin_address, destination_address,
         destination=destination,
         uber_connected=bool(session.get("uber_token")),
         uber_available=uber_client.is_configured(),
+        google_maps_api_key=GOOGLE_MAPS_API_KEY,
     )
 
 

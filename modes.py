@@ -13,9 +13,9 @@ is passed in, falling back to the rate-card formula (avg speed + route
 factor) otherwise.
 
 Each mode also declares a ``route_profile`` ("driving" / "cycling" /
-"walking" / "straight") that tells the results-page map which live OSRM
-engine to draw its line with -- see the "Live route map" section of the
-README.
+"walking" / "transit") that tells the results-page Google Map which
+travel mode to draw its line with -- see the "Live route map" section of
+the README.
 """
 
 from dataclasses import dataclass, field
@@ -38,12 +38,10 @@ class Mode:
     # transit_subway | transit_bus | transit_rail.
     google_mode: str = "driving"
     notes: str = field(default="")
-    # Which live OSRM routing engine (see templates/results.html) draws this
-    # mode's line on the map: "driving", "cycling", or "walking". Transit
-    # modes have no live routing API available, so they fall back to
-    # "straight" and the map just shows the straight-line distance they're
-    # actually estimated from (see the module docstring above).
-    route_profile: str = field(default="straight")
+    # Which Google Maps travel mode (see templates/results.html) draws this
+    # mode's line on the results map: "driving", "cycling", "walking", or
+    # "transit" (the default, for subway/bus/commuter rail).
+    route_profile: str = field(default="transit")
 
     def estimate(self, distance_miles: float, route_info: dict | None = None) -> dict:
         if route_info is not None:

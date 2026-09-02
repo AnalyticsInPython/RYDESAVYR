@@ -295,7 +295,7 @@ def get_subway_option(origin, destination):
         # Carbon is from the train ride only — the walking legs add none.
         "carbon": round(90 * details["distance_miles"]),
         "notes": notes,
-        "route_profile": "straight",
+        "route_profile": "transit",
     }
 
 
