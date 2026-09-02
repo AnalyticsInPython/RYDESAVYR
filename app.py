@@ -14,6 +14,7 @@ from citibike import get_citibike_option
 from directions import DirectionsError, api_key, route
 from geocode import geocode_address, search_addresses
 from modes import MODES
+from mta_bus import get_bus_option
 from mta_subway import get_subway_option
 from scoring import (
     DEFAULT_TIER,
@@ -49,6 +50,7 @@ def _valid_uber_access_token():
 _LIVE_MODE_SOURCES = {
     "citibike": get_citibike_option,
     "subway": get_subway_option,
+    "bus": get_bus_option,
 }
 
 
