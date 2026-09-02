@@ -1,7 +1,7 @@
 # RYDESAVYR
 
 A small Flask web app that estimates every way home (rideshare, taxi, transit,
-biking, walking, car share) for a trip and ranks them by whatever the user
+biking, walking) for a trip and ranks them by whatever the user
 cares about most — price, time, distance, personal energy, scenery
 ("nature-vibez"), and carbon footprint. See `proposal.md` for the
 full project background.
@@ -31,7 +31,7 @@ Token tab says plainly:
 
 So despite what older docs/SDK fragments suggested, this scope is gated
 behind an actual Uber Business Development relationship — the same as
-Lyft, Zipcar, and Curb (see below). If you get that access in the future:
+Lyft and Curb (see below). If you get that access in the future:
 
 1. Sign in at https://developer.uber.com with your own Uber account and
    create an application (any API suite works).
@@ -74,6 +74,28 @@ they pull live data instead of using the formula. See below.
 Geocoding uses OpenStreetMap's free Nominatim service (`geocode.py`) — no API
 key required.
 
+## Live route map
+
+The results page shows a Leaflet map (`templates/index.html`) with the
+origin and destination pinned. Clicking a row draws that mode's route:
+
+- **Uber / Lyft / Taxi** — a real driving route from a free, no-API-key OSRM
+  instance (`routing.openstreetmap.de/routed-car`).
+- **Citibike** — a real cycling route from that same OSRM project's
+  bike-profile instance (`routed-bike`).
+- **Walking** — a real walking route from its foot-profile instance
+  (`routed-foot`).
+- **Subway / bus / commuter rail** — no free live transit-routing API exists,
+  so these show the straight-line distance they're already estimated from
+  (see above), thickened to make clear it's the selected route.
+
+Each mode in `modes.py` (and the live `citibike.py`/`mta_subway.py`/
+`mta_bus.py` results) carries a `route_profile` field saying which of these
+it uses. Note that the public `router.project-osrm.org` demo server quietly
+returns the *car* route no matter which profile name you ask it for — the
+map deliberately uses `routing.openstreetmap.de` instead, which runs
+genuinely separate car/bike/foot engines.
+
 ## Why formulas instead of live APIs
 
 - **Subway, bus, commuter rail**: real free/open MTA GTFS-realtime APIs
@@ -83,10 +105,9 @@ key required.
   see `citibike.py`.
 - **Uber**: OAuth login is wired up, but Uber currently rejects the
   `request` scope for a freshly-created app — see "Live Uber pricing"
-  above. Gated behind Business Development, same as Lyft/Zipcar/Curb.
+  above. Gated behind Business Development, same as Lyft/Curb.
 - **Lyft**: its public developer portal has stopped onboarding new apps, so
   this stays formula-based for now.
-- **Zipcar**: has a partner API, gated behind an approval email.
 - **Curb**: no public API at all; folded into the "Taxi" line item using the
   published NYC TLC rate card instead.
 - **Empower**: intentionally excluded — the NYC TLC has publicly declared it
@@ -97,5 +118,5 @@ key required.
 - Swap in MTA GTFS-realtime for live subway/bus arrival times.
 - Persist a saved "home" address per user instead of typing it every time.
 - Contact Uber Business Development to request `request`-scope access for
-  live Uber pricing (see "Live Uber pricing" above); apply for Lyft/Zipcar
-  partner API access too if live quotes become worth the integration cost.
+  live Uber pricing (see "Live Uber pricing" above); apply for a Lyft
+  partner API too if live quotes become worth the integration cost.

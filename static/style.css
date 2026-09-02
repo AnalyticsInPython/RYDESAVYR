@@ -184,6 +184,60 @@ tr.top-pick {
   color: #666;
 }
 
+#map {
+  height: 320px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.6rem;
+}
+
+.map-legend {
+  display: flex;
+  gap: 1.2rem;
+  font-size: 0.8rem;
+  color: #555;
+  margin-bottom: 1rem;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 1.2rem;
+  height: 0;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+  border-top: 3px solid;
+}
+
+.legend-swatch.driving {
+  border-top-color: #1f6feb;
+}
+
+.legend-swatch.cycling {
+  border-top-color: #e8590c;
+}
+
+.legend-swatch.walking {
+  border-top-color: #8250df;
+}
+
+.legend-swatch.straight {
+  border-top-style: dashed;
+  border-top-color: #888;
+}
+
+.route-row {
+  cursor: pointer;
+}
+
+.route-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.route-row.selected-route {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .flash {
   background: #fdecea;
   border: 1px solid #f5c2c0;

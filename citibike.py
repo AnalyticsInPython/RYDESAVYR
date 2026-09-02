@@ -233,6 +233,7 @@ def get_citibike_option(origin, destination):
         "nature_vibez": 8,
         "carbon": 0,
         "notes": notes,
+        "route_profile": "cycling",
     }
 
 

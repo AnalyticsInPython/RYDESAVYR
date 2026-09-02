@@ -1,8 +1,8 @@
 """Definitions for every way home RYDESAVYR knows how to compare.
 
 Prices, speeds, and impact numbers below are reasonable NYC approximations,
-not live quotes. Uber, Lyft, and Zipcar don't offer open fare APIs, and
-Curb has no public API at all (see README), so estimates here are computed
+not live quotes. Uber and Lyft don't offer open fare APIs, and Curb has no
+public API at all (see README), so estimates here are computed
 from typical published rate cards instead of scraping or logging into any
 account. Swap in a real API call inside `Mode.estimate` for any mode once
 you have access to one.
@@ -25,6 +25,12 @@ class Mode:
     nature_vibez: float      # 0-10, higher = more pleasant/scenic
     carbon_g_per_mile: float
     notes: str = field(default="")
+    # Which live OSRM routing engine (see templates/index.html) draws this
+    # mode's line on the map: "driving", "cycling", or "walking". Transit
+    # modes have no live routing API available, so they fall back to
+    # "straight" and the map just shows the straight-line distance they're
+    # actually estimated from (see the module docstring above).
+    route_profile: str = field(default="straight")
 
     def estimate(self, distance_miles: float) -> dict:
         route_miles = distance_miles * self.route_factor
@@ -42,6 +48,7 @@ class Mode:
             "nature_vibez": self.nature_vibez,
             "carbon": round(carbon),
             "notes": self.notes,
+            "route_profile": self.route_profile,
         }
 
 
@@ -51,18 +58,21 @@ MODES = [
         cost_per_mile=1.75, cost_per_minute=0.35, wait_minutes=5,
         energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         notes="Estimated from typical NYC UberX rates, not a live quote.",
+        route_profile="driving",
     ),
     Mode(
         "lyft", "Lyft", avg_speed_mph=18, route_factor=1.3, base_fare=2.75,
         cost_per_mile=1.70, cost_per_minute=0.32, wait_minutes=5,
         energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         notes="Estimated from typical NYC Lyft rates, not a live quote.",
+        route_profile="driving",
     ),
     Mode(
         "citibike", "Citibike", avg_speed_mph=8, route_factor=1.2, base_fare=4.79,
         cost_per_mile=0, cost_per_minute=0, wait_minutes=3,
         energy_cost=7, nature_vibez=8, carbon_g_per_mile=0,
         notes="Single-ride classic-bike price; assumes the trip fits the 30-minute window.",
+        route_profile="cycling",
     ),
     Mode(
         "subway", "Subway", avg_speed_mph=17, route_factor=1.4, base_fare=2.90,
@@ -87,18 +97,13 @@ MODES = [
         cost_per_mile=0, cost_per_minute=0, wait_minutes=0,
         energy_cost=9, nature_vibez=6, carbon_g_per_mile=0,
         notes="Free and healthy, but slow and physically demanding over long distances.",
+        route_profile="walking",
     ),
     Mode(
         "taxi", "Taxi (Curb / yellow cab)", avg_speed_mph=15, route_factor=1.3, base_fare=3.00,
         cost_per_mile=2.80, cost_per_minute=0.50, wait_minutes=5,
         energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         notes="Approximated from the NYC TLC rate card; Curb has no public fare API.",
-    ),
-    Mode(
-        "zipcar", "Zipcar", avg_speed_mph=20, route_factor=1.3, base_fare=12.00,
-        cost_per_mile=0.45, cost_per_minute=0, wait_minutes=10,
-        energy_cost=4, nature_vibez=3, carbon_g_per_mile=350,
-        notes="Assumes a 1-hour minimum booking; most NYC Zipcars must return to their "
-              "home spot, so this is a rough one-way approximation.",
+        route_profile="driving",
     ),
 ]

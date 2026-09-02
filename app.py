@@ -80,7 +80,7 @@ def _start_uber_login(pending_trip=None):
     return redirect(uber_client.authorize_url(redirect_uri, state))
 
 
-def _render(tiers, results, origin_address, destination_address):
+def _render(tiers, results, origin_address, destination_address, origin=None, destination=None):
     return render_template(
         "index.html",
         tiers=tiers,
@@ -91,6 +91,8 @@ def _render(tiers, results, origin_address, destination_address):
         results=results,
         origin_address=origin_address,
         destination_address=destination_address,
+        origin=origin,
+        destination=destination,
         uber_connected=bool(session.get("uber_token")),
         uber_available=uber_client.is_configured(),
     )
@@ -107,6 +109,8 @@ def index():
     results = None
     origin_address = ""
     destination_address = ""
+    origin = None
+    destination = None
 
     if request.method == "POST":
         origin_address = request.form.get("origin_address", "").strip()
@@ -155,7 +159,7 @@ def index():
         except ValueError as exc:
             flash(str(exc))
 
-    return _render(tiers, results, origin_address, destination_address)
+    return _render(tiers, results, origin_address, destination_address, origin, destination)
 
 
 @app.route("/uber/login")
@@ -190,7 +194,10 @@ def uber_callback():
         return redirect(url_for("index"))
 
     results = _compute_results(pending["origin"], pending["destination"], pending["tiers"])
-    return _render(pending["tiers"], results, pending["origin_address"], pending["destination_address"])
+    return _render(
+        pending["tiers"], results, pending["origin_address"], pending["destination_address"],
+        pending["origin"], pending["destination"],
+    )
 
 
 @app.route("/uber/disconnect")
