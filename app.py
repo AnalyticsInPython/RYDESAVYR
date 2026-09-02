@@ -156,7 +156,8 @@ def _render_form(tiers, origin_address="", destination_address=""):
     )
 
 
-def _render_results(tiers, results, origin_address, destination_address):
+def _render_results(tiers, results, origin_address, destination_address,
+                    origin=None, destination=None):
     return render_template(
         "results.html",
         tiers=tiers,
@@ -167,6 +168,8 @@ def _render_results(tiers, results, origin_address, destination_address):
         data_source=_data_source_note(results),
         origin_address=origin_address,
         destination_address=destination_address,
+        origin=origin,
+        destination=destination,
         uber_connected=bool(session.get("uber_token")),
         uber_available=uber_client.is_configured(),
     )
@@ -239,7 +242,9 @@ def results():
         flash(str(exc))
         return _render_form(tiers, origin_address, destination_address)
 
-    return _render_results(tiers, computed, origin_address, destination_address)
+    return _render_results(
+        tiers, computed, origin_address, destination_address, origin, destination
+    )
 
 
 @app.route("/uber/login")
@@ -275,7 +280,8 @@ def uber_callback():
 
     computed = _compute_results(pending["origin"], pending["destination"], pending["tiers"])
     return _render_results(
-        pending["tiers"], computed, pending["origin_address"], pending["destination_address"]
+        pending["tiers"], computed, pending["origin_address"], pending["destination_address"],
+        pending["origin"], pending["destination"],
     )
 
 

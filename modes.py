@@ -11,6 +11,11 @@ API when a GOOGLE_MAPS_API_KEY is configured: each mode declares a
 ``google_mode`` and `Mode.estimate` uses the real route when ``route_info``
 is passed in, falling back to the rate-card formula (avg speed + route
 factor) otherwise.
+
+Each mode also declares a ``route_profile`` ("driving" / "cycling" /
+"walking" / "straight") that tells the results-page map which live OSRM
+engine to draw its line with -- see the "Live route map" section of the
+README.
 """
 
 from dataclasses import dataclass, field
@@ -33,6 +38,12 @@ class Mode:
     # transit_subway | transit_bus | transit_rail.
     google_mode: str = "driving"
     notes: str = field(default="")
+    # Which live OSRM routing engine (see templates/results.html) draws this
+    # mode's line on the map: "driving", "cycling", or "walking". Transit
+    # modes have no live routing API available, so they fall back to
+    # "straight" and the map just shows the straight-line distance they're
+    # actually estimated from (see the module docstring above).
+    route_profile: str = field(default="straight")
 
     def estimate(self, distance_miles: float, route_info: dict | None = None) -> dict:
         if route_info is not None:
@@ -66,6 +77,7 @@ class Mode:
             "carbon": round(carbon),
             "live": live,
             "notes": self.notes,
+            "route_profile": self.route_profile,
         }
 
 
@@ -75,6 +87,7 @@ MODES = [
         cost_per_mile=1.75, cost_per_minute=0.35, wait_minutes=5,
         energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         google_mode="driving",
+        route_profile="driving",
         notes="Fare estimated from typical NYC UberX rates (unless you connect "
               "Uber for a live price); distance and drive time from Google Maps.",
     ),
@@ -83,6 +96,7 @@ MODES = [
         cost_per_mile=1.70, cost_per_minute=0.32, wait_minutes=5,
         energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         google_mode="driving",
+        route_profile="driving",
         notes="Fare estimated from typical NYC Lyft rates; distance and drive "
               "time from Google Maps.",
     ),
@@ -91,6 +105,7 @@ MODES = [
         cost_per_mile=0, cost_per_minute=0, wait_minutes=3,
         energy_cost=7, nature_vibez=8, carbon_g_per_mile=0,
         google_mode="bicycling",
+        route_profile="cycling",
         notes="Single-ride classic-bike price; bike route and time from Google Maps. "
               "Assumes the trip fits the 30-minute window.",
     ),
@@ -123,6 +138,7 @@ MODES = [
         cost_per_mile=0, cost_per_minute=0, wait_minutes=0,
         energy_cost=9, nature_vibez=6, carbon_g_per_mile=0,
         google_mode="walking",
+        route_profile="walking",
         notes="Free and healthy, but slow over long distances; walking route and "
               "time from Google Maps.",
     ),
@@ -131,6 +147,7 @@ MODES = [
         cost_per_mile=2.80, cost_per_minute=0.50, wait_minutes=5,
         energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         google_mode="driving",
+        route_profile="driving",
         notes="Fare from the NYC TLC rate card (Curb has no public fare API); "
               "distance and drive time from Google Maps.",
     ),

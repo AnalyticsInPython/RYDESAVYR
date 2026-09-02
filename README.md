@@ -2,8 +2,8 @@
 
 A small Flask web app that estimates every way home (rideshare, taxi, transit,
 biking, walking) for a trip and ranks them by whatever the user cares about
-most — price, time, distance, personal energy, scenery, and carbon footprint.
-See `proposal.md` for the full project background.
+most — price, time, distance, personal energy, scenery ("nature-vibez"), and
+carbon footprint. See `proposal.md` for the full project background.
 
 ## Running it
 
@@ -43,9 +43,9 @@ matter" / "neutral" / "critical"); any factor marked "critical" becomes the
 primary sort key. Geocoding uses OpenStreetMap's free Nominatim service
 (`geocode.py`), which also powers the From/To address autocomplete.
 
-**Citibike (`citibike.py`), the subway (`mta_subway.py`), and Uber
-(`uber_client.py`) are the exceptions** — they pull live data instead of
-using the formula. See below.
+**Citibike (`citibike.py`), the subway (`mta_subway.py`), the bus
+(`mta_bus.py`), and Uber (`uber_client.py`) are the exceptions** — they pull
+live data instead of using the formula. See below.
 
 ## Google Maps setup
 
@@ -125,6 +125,30 @@ Columbia coverage area *and* falls within that night's service window
 (a month-dependent start time until 3 a.m.), so there is no rate-card
 fallback — it simply isn't offered otherwise.
 
+## Live route map
+
+The results page shows a Leaflet map (`templates/results.html`) with the
+origin and destination pinned. Clicking a row draws that mode's route:
+
+- **Uber / Lyft / Taxi / Columbia Evening Shuttle** — a real driving route
+  from a free, no-API-key OSRM instance
+  (`routing.openstreetmap.de/routed-car`).
+- **Citibike** — a real cycling route from that same OSRM project's
+  bike-profile instance (`routed-bike`).
+- **Walking** — a real walking route from its foot-profile instance
+  (`routed-foot`).
+- **Subway / bus / commuter rail** — no free live transit-routing API exists,
+  so these show the straight-line distance they're already estimated from
+  (see above), thickened to make clear it's the selected route.
+
+Each mode in `modes.py` (and the live `citibike.py` / `mta_subway.py` /
+`mta_bus.py` / `columbia_shuttle.py` results) carries a `route_profile`
+field saying which of these it uses. Note that the public
+`router.project-osrm.org` demo server quietly returns the *car* route no
+matter which profile name you ask it for — the map deliberately uses
+`routing.openstreetmap.de` instead, which runs genuinely separate
+car/bike/foot engines.
+
 ## Why formulas instead of live APIs
 
 - **Subway**: live "next train" wait times come from MTA's free
@@ -157,7 +181,7 @@ fallback — it simply isn't offered otherwise.
 
 ## Next steps
 
-- Extend the live MTA GTFS-realtime integration from subway to bus and
+- Extend the live MTA GTFS-realtime integration from subway and bus to
   commuter-rail arrival times.
 - Cache Routes API responses so re-ranking the same trip (e.g. after moving a
   slider) doesn't re-hit the API.

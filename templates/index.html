@@ -103,6 +103,45 @@
       });
     }
 
+    // A full form submit reloads the page, which would otherwise wipe the
+    // hidden origin_lat/origin_lng fields and force clicking "Use my
+    // location" (and re-triggering the browser's permission prompt) before
+    // every single search. Caching the last successful reading in
+    // localStorage lets repeat searches reuse it silently instead.
+    var ORIGIN_LOCATION_CACHE_KEY = 'rydesavyr_origin_location';
+    var ORIGIN_LOCATION_CACHE_MS = 20 * 60 * 1000; // 20 minutes
+
+    function saveOriginLocationToCache(lat, lng) {
+      try {
+        localStorage.setItem(ORIGIN_LOCATION_CACHE_KEY, JSON.stringify({
+          lat: lat, lng: lng, savedAt: Date.now(),
+        }));
+      } catch (e) { /* localStorage unavailable (e.g. private browsing) — no cache, no crash */ }
+    }
+
+    function loadFreshOriginLocationFromCache() {
+      try {
+        var raw = localStorage.getItem(ORIGIN_LOCATION_CACHE_KEY);
+        if (!raw) return null;
+        var cached = JSON.parse(raw);
+        if (Date.now() - cached.savedAt > ORIGIN_LOCATION_CACHE_MS) {
+          localStorage.removeItem(ORIGIN_LOCATION_CACHE_KEY);
+          return null;
+        }
+        return cached;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function applyOriginLocation(lat, lng, statusMessage) {
+      document.getElementById('origin_lat').value = lat;
+      document.getElementById('origin_lng').value = lng;
+      document.getElementById('origin_address').value = '';
+      document.getElementById('origin_address').placeholder = 'Using your current location';
+      document.getElementById('location-status').textContent = statusMessage;
+    }
+
     document.getElementById('use-location').addEventListener('click', function () {
       const status = document.getElementById('location-status');
       if (!navigator.geolocation) {
@@ -112,17 +151,23 @@
       status.textContent = 'Locating…';
       navigator.geolocation.getCurrentPosition(
         function (position) {
-          document.getElementById('origin_lat').value = position.coords.latitude;
-          document.getElementById('origin_lng').value = position.coords.longitude;
-          document.getElementById('origin_address').value = '';
-          document.getElementById('origin_address').placeholder = 'Using your current location';
-          status.textContent = 'Location set ✓';
+          saveOriginLocationToCache(position.coords.latitude, position.coords.longitude);
+          applyOriginLocation(position.coords.latitude, position.coords.longitude, 'Location set ✓');
         },
         function () {
           status.textContent = 'Could not get your location — enter an address instead.';
         }
       );
     });
+
+    // On page load (including right after a search reloads the page),
+    // silently reuse a still-fresh cached location instead of prompting
+    // again — only if the user hasn't already typed/picked an address.
+    (function () {
+      if (document.getElementById('origin_address').value.trim() !== '') return;
+      var cached = loadFreshOriginLocationFromCache();
+      if (cached) applyOriginLocation(cached.lat, cached.lng, 'Using your last known location ✓');
+    })();
 
     function setupAutocomplete(inputId, latId, lngId) {
       const input = document.getElementById(inputId);

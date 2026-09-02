@@ -162,6 +162,8 @@ def get_shuttle_option(origin, destination, route_info=None, now=None):
         "nature_vibez": SCENERY,
         "carbon": round(CARBON_G_PER_MILE * route_miles),
         "live": live,
+        # It's a van on city streets — the map draws it with the driving engine.
+        "route_profile": "driving",
         "notes": (
             "Free with an active UNI + Columbia ID. Shared van operated by Via, "
             "runs nightly until 3am within the Morningside/Manhattanville "

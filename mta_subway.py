@@ -263,6 +263,7 @@ def get_subway_option(origin, destination):
         "nature_vibez": 3,
         "carbon": round(90 * details["distance_miles"]),
         "notes": notes,
+        "route_profile": "straight",
     }
 
 
