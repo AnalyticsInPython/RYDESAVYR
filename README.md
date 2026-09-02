@@ -1,9 +1,10 @@
 # RYDESAVYR
 
 A small Flask web app that estimates every way home (rideshare, taxi, transit,
-biking, walking) for a trip and ranks them by whatever the user cares about
-most — price, time, distance, personal energy, scenery ("nature-vibez"), and
-carbon footprint. See `proposal.md` for the full project background.
+biking, walking) for a trip and ranks them by whatever the user
+cares about most — price, time, distance, personal energy, scenery
+("nature-vibez"), and carbon footprint. See `proposal.md` for the
+full project background.
 
 ## Running it
 
@@ -11,119 +12,116 @@ carbon footprint. See `proposal.md` for the full project background.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env      # then paste your Google Maps key into .env
 python app.py
 ```
 
 Then open http://127.0.0.1:5050.
 
-The app runs without any keys — it just falls back to rate-card estimates
-for distance and time, and formula pricing for Uber.
-
 ## How estimates are computed
 
-- **Distance and travel time**: the Google Maps Routes API when a
-  `GOOGLE_MAPS_API_KEY` is set (see below). Each mode in `modes.py` declares a
-  `google_mode` (`driving` → Uber/Lyft/Taxi, `bicycling` → Citibike,
-  `walking` → Walking, and `transit_subway` / `transit_bus` / `transit_rail`
-  for the three transit modes — the transit variants use the Routes API's
-  `transitPreferences.allowedTravelModes` so "Subway" and "Bus" resolve to
-  genuinely different routes). Rows using live data are marked **live** in the
-  results table. Without a key, each mode falls back to a formula: an average
-  NYC speed and a route-directness factor applied to the straight-line
-  distance between the two geocoded addresses.
-- **Price**: a rate card per mode (base fare + cost per mile/minute), applied
-  to the real route distance and time. See "Why rate cards for pricing" below.
-- **Energy, scenery, carbon**: fixed per-mode scores, easy to tune in
-  `modes.py`.
-
+There's no live-quote API available for Uber, Lyft, or Taxi (see below), so
+each of those is a rate-card formula in `modes.py`: base fare + cost/mile +
+cost/minute, applied to a distance and travel time. Energy, scenery, and
+carbon are fixed per-mode scores that are easy to tune in `modes.py`.
 `scoring.py` normalizes every factor 0-1 across the candidate modes and
 combines them using the user's per-factor importance tiers ("does not
-matter" / "neutral" / "critical"); any factor marked "critical" becomes the
-primary sort key. Geocoding uses OpenStreetMap's free Nominatim service
-(`geocode.py`), which also powers the From/To address autocomplete.
+matter" / "neutral" / "critical").
 
-**Citibike (`citibike.py`), the subway (`mta_subway.py`), the bus
-(`mta_bus.py`), and Uber (`uber_client.py`) are the exceptions** — they pull
-live data instead of using the formula. See below.
+For the driving-based modes -- Uber, Lyft, Taxi -- that distance/time comes
+from a real road-network route via `routing.py` (OSRM's free public demo
+server, no key needed), not a straight-line-distance guess. Every other mode
+(Walking, Subway, Bus, Commuter Train) still uses the older straight-line x
+route-directness-factor approximation, since OSRM's public demo only
+actually routes cars -- see `routing.py`'s docstring for how that was
+confirmed. This is separate from the results-page map's routing (see "Live
+route map" below), which is purely visual and doesn't feed back into these
+numbers.
 
-## Google Maps setup
+Citibike (`citibike.py`), Subway (`mta_subway.py`), and Bus (`mta_bus.py`,
+once a key is configured) are the exceptions that pull live data instead of
+using a rate-card formula at all. For Subway the reported distance and time
+are door-to-door — walk to the nearest station + live wait + ride + walk
+from the destination station — with the walking legs and the
+between-stations ride still estimated from the straight-line formula.
 
-Distance and travel time come from the Google Maps **Routes API**
-(`directions.py`). To enable it:
+The **Columbia Evening Shuttle** (`columbia_shuttle.py`) is a further
+conditional mode: a free, evening-only shared van that Via operates for
+Columbia. It only appears when the trip both starts and ends inside the
+Columbia coverage area *and* falls within that night's service window (a
+month-dependent start time until 3 a.m.), so there is no rate-card fallback
+— it simply isn't offered otherwise. It travels by road, so it reuses the
+same `routing.py` driving route as Uber/Lyft/Taxi, with a shared-ride and
+dispatch-wait allowance on top.
 
-1. In the [Google Cloud console](https://console.cloud.google.com/), create a
-   project and enable **Routes API** under *APIs & Services*.
-2. Turn on billing for the project (the Routes API has a monthly free tier but
-   requires a billing account).
-3. Create an API key under *Credentials* and put it in `.env`:
-   `GOOGLE_MAPS_API_KEY=...`
+Geocoding uses OpenStreetMap's free Nominatim service (`geocode.py`) — no API
+key required; it also powers the From/To address autocomplete. The trip
+form lives at `/` (`templates/index.html`) and the ranked results render on
+their own page at `/results` (`templates/results.html`).
 
-Each ranked trip makes one Routes API request per travel mode (driving,
-bicycling, walking, and one transit request each for subway, bus, and
-commuter rail).
+## How the Uber/Lyft rate cards were built
 
-## Live Uber pricing (needs Uber's approval — not actually self-serve)
+Rather than guess "typical" numbers, `modes.py`'s Uber and Lyft `base_fare`/
+`cost_per_mile`/`cost_per_minute` are fit by linear regression against NYC
+TLC's official historical **High Volume For-Hire Vehicle trip data**
+(`fhvhv_tripdata_2026-05.parquet` from
+nyc.gov/site/tlc/about/tlc-trip-record-data.page — the same dataset every
+serious NYC-taxi analysis project uses, e.g.
+github.com/toddwschneider/nyc-taxi-data).
 
-The OAuth "Log in with Uber" login flow is wired up end-to-end
-(`uber_client.py` + the `/uber/*` routes in `app.py`), but **as of testing
-this in September 2026, Uber's dashboard blocks it**: a freshly-created app
-gets `invalid_scope` when requesting the `request` scope, and the Access
+Method: queried ~130k solo (non-shared) Uber trips and ~60k solo Lyft trips
+(0.3-30 miles, 1-90 minutes) directly from the remote Parquet file via
+DuckDB's `httpfs` extension (no full-file download needed — Parquet's
+columnar format means only the ~10 needed columns get fetched). Regressed
+each company's rider-mandatory total (`base_passenger_fare` + tolls + BCF +
+sales tax + congestion surcharges, tips excluded — same convention as Taxi
+below) against `trip_miles` and `trip_time`, then dropped the ~3% of trips
+with the largest residuals (surge-priced outliers a 2-feature linear model
+has no way to explain) and refit.
+
+Result: **Uber** R²=0.81, MAE $7.65 against an average $31.69 fare; **Lyft**
+R²=0.90, MAE $4.96 against an average $29.73 fare. The remaining error is
+real demand-based surge pricing, which this kind of model can't capture
+without a live signal — not a bug in the fit. Both companies' `avg_speed_mph`
+values are this same sample's actual average speed, used only if live
+routing (`routing.py`) is unavailable.
+
+This replaced hand-guessed constants that were meaningfully off — the old
+Uber formula estimated **$18.07** for the sample's average trip vs. the
+$31.69 riders actually paid.
+
+To refit against a newer month: swap the URL in the query for a more recent
+`fhvhv_tripdata_YYYY-MM.parquet`, rerun the regression, and update the four
+constants (`base_fare`, `cost_per_mile`, `cost_per_minute`, `avg_speed_mph`)
+per company in `modes.py`.
+
+## Why there's no live Uber/Lyft/Taxi pricing
+
+An OAuth "Log in with Uber" flow was built and tested here, but **as of
+September 2026, Uber's dashboard blocks it for a freshly-created app**:
+requesting the `request` scope returns `invalid_scope`, and the Access
 Token tab says plainly:
 
 > Your application currently does not have access to Authorization Code
 > scopes. Please contact your Uber business development representative or
 > Uber point of contact to request access.
 
-So despite what older docs/SDK fragments suggested, this scope is gated
-behind an actual Uber Business Development relationship — the same as
-Lyft and Curb (see below). If you get that access in the future:
+So despite what older docs/SDK fragments suggested, that scope is gated
+behind an actual Uber Business Development relationship — the same as Lyft.
+Not something a hobby project can get self-serve, so that OAuth code
+(`uber_client.py`, the `/uber/*` routes, the "Log in with Uber" button) was
+removed rather than left dead in the tree; Uber uses the rate-card formula
+described above instead.
 
-1. Sign in at https://developer.uber.com with your own Uber account and
-   create an application (any API suite works).
-2. Under the app's Authentication settings, add this exact redirect URI:
-   `http://127.0.0.1:5050/uber/callback`
-3. Copy `.env.example` to `.env` and fill in `UBER_CLIENT_ID` /
-   `UBER_CLIENT_SECRET` from that app.
-4. Restart `python app.py`.
-
-With those set, the first time anyone searches, RYDESAVYR automatically
-redirects to Uber's own login page (no separate "connect account" step —
-it's part of the same tap that starts the search, since most people will
-be doing this one-handed on a phone). After they grant access, it bounces
-back and shows a live UberX price/ETA instead of the formula estimate.
-
-Without `UBER_CLIENT_ID`/`UBER_CLIENT_SECRET` set, or if Uber rejects the
-scope, this fails safe and Uber falls back to the same rate-card formula
-as every other mode — nothing else breaks.
-
-`uber_client.py` reconstructs the live-estimate response shape from Uber's
-official Python SDK and cached doc fragments, since developer.uber.com's
-docs are JavaScript-rendered and couldn't be fully verified here — if a
-field comes back missing or renamed once real access is granted, adjust
-`get_live_estimate` in that file.
-
-## Why rate cards for pricing
-
-There's no live-quote API available for most of these services (see below),
-so each mode in `modes.py` is a simple formula: a rate card (base fare + cost
-per mile/minute) applied to the real route distance and time (or, without a
-Google Maps key, to an average NYC speed and route-directness factor over the
-straight-line distance). Energy, scenery, and carbon are fixed per-mode
-scores that are easy to tune in `modes.py`. `scoring.py` normalizes every
-factor 0-1 across the candidate modes and combines them using the user's
-per-factor importance tiers ("does not matter" / "neutral" / "critical").
-
-Citibike (`citibike.py`), the subway (`mta_subway.py`), the bus
-(`mta_bus.py`), and Uber (`uber_client.py`) are the exceptions — they pull
-live data instead of using the formula. See below.
-
-The **Columbia Evening Shuttle** (`columbia_shuttle.py`) is a further
-special case: a free, evening-only shared van that Via operates for
-Columbia. It only shows up when the trip both starts and ends inside the
-Columbia coverage area *and* falls within that night's service window
-(a month-dependent start time until 3 a.m.), so there is no rate-card
-fallback — it simply isn't offered otherwise.
+A live Taxi integration via the TaxiFareFinder API was also built and then
+abandoned on purpose: getting a key requires a manual, human-reviewed
+request (`taxifarefinder.com/contactus.php`), and once the Uber/Lyft rate
+cards above were empirically fit against real trip data, the accuracy gap
+that would have justified waiting on that approval mostly closed. Taxi's
+formula (in `modes.py`, verified against the NYC TLC's published rate card:
+$3.00 initial charge + $3.50/mile + the $0.50 MTA and $1.00 improvement
+surcharges that apply to nearly every ride) is judged good enough on its
+own. If a live quote is wanted again later, TaxiFareFinder's API (documented
+in earlier project history) is the place to pick that back up.
 
 ## Live route map
 
@@ -146,7 +144,9 @@ the returned polyline with the Maps JavaScript API's `geometry` library:
 
 Each mode in `modes.py` (and the live `citibike.py` / `mta_subway.py` /
 `mta_bus.py` / `columbia_shuttle.py` results) carries a `route_profile`
-field saying which of these travel modes it uses.
+field saying which of these travel modes it uses. This map is purely
+visual — it doesn't feed back into the price/time/distance numbers in the
+results table (see "How estimates are computed" above for what does).
 
 Requires `GOOGLE_MAPS_API_KEY` in `.env` with the **Maps JavaScript API**
 and **Routes API** enabled on that key's project (see `.env.example`) —
@@ -157,44 +157,38 @@ message.
 
 ## Why formulas instead of live APIs
 
-- **Subway**: live "next train" wait times come from MTA's free
-  GTFS-realtime feeds (`mta_subway.py`); the reported distance and time are
-  door-to-door (walk to the nearest station + live wait + ride + walk from
-  the destination station), with the two walking legs and the
-  between-stations ride portion still estimated from the straight-line
-  formula. Carbon still counts the train ride only.
-- **Bus**: live "next bus" wait times come from MTA Bus Time's SIRI feed
-  (`mta_bus.py`, free `MTA_BUS_API_KEY`); the ride portion still uses the
-  formula.
-- **Commuter rail**: MTA GTFS-realtime feeds exist and are the natural next
-  upgrade — swap the relevant `Mode.estimate()` call for a real API request.
-- **Citibike**: live pricing and station availability are wired up via the
-  GBFS feed — see `citibike.py`.
+- **Uber/Lyft**: formula-based, now fit against real historical trip data —
+  see "How the Uber/Lyft rate cards were built" above.
+- **Curb/Taxi**: no public API at all; the TaxiFareFinder integration was
+  tried and abandoned (see above) — formula-based, verified against the
+  official TLC rate card.
+- **Subway**: live next-train wait times come from MTA's free, keyless
+  GTFS-realtime feeds — see `mta_subway.py`.
+- **Bus**: live next-bus wait times come from MTA Bus Time's SIRI API (needs
+  a free `MTA_BUS_API_KEY`) — see `mta_bus.py`.
+- **Commuter rail**: no free live-arrival API found yet for LIRR/Metro-North;
+  still formula-based.
+- **Citibike**: live pricing is already wired up via the GBFS feed — see
+  `citibike.py`.
 - **Columbia Evening Shuttle**: there is no public Via API (their developer
   program is partnership-gated and undocumented) and Columbia publishes no
   feed, so the estimate is a formula built on the shuttle's published rules
   — free fare, geofenced coverage area, month-aware hours.
   `columbia_shuttle.py` has a `get_live_estimate` stub for the day access
-  is granted, same as `uber_client.py`.
-- **Uber**: OAuth login is wired up, but Uber currently rejects the
-  `request` scope for a freshly-created app — see "Live Uber pricing"
-  above. Gated behind Business Development, same as Lyft/Curb.
-- **Lyft**: its public developer portal has stopped onboarding new apps, so
-  this stays formula-based for now.
-- **Curb**: no public API at all; folded into the "Taxi" line item using the
-  published NYC TLC rate card instead.
-- **MTA (subway / bus / commuter rail)**: flat published fares, so no API is
-  needed for price.
+  is granted.
 - **Empower**: intentionally excluded — the NYC TLC has publicly declared it
   an unlicensed rideshare app, so it's left out rather than integrated.
 
 ## Next steps
 
-- Extend the live MTA GTFS-realtime integration from subway and bus to
-  commuter-rail arrival times.
-- Cache Routes API responses so re-ranking the same trip (e.g. after moving a
-  slider) doesn't re-hit the API.
+- Find a live-arrival source for commuter rail (LIRR/Metro-North) to match
+  Subway and Bus.
 - Persist a saved "home" address per user instead of typing it every time.
-- Contact Uber Business Development to request `request`-scope access for
-  live Uber pricing (see "Live Uber pricing" above), and apply for Lyft
-  partner API access if live fare quotes become available again.
+- Periodically refit the Uber/Lyft constants against a newer month's TLC
+  data so they don't go stale the way the old guessed numbers did (see "How
+  the Uber/Lyft rate cards were built" above).
+- `routing.py` (the server-side price/time calculation for Uber/Lyft/Taxi)
+  currently points at OSRM's public demo server, which isn't meant for
+  production traffic (no uptime/rate-limit guarantees) -- fine for now, but
+  swap in a self-hosted OSRM instance or a keyed provider like
+  OpenRouteService if this ever needs to be reliable under real usage.

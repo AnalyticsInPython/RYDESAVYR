@@ -16,28 +16,6 @@ header h1 {
   margin-bottom: 0.2rem;
 }
 
-.uber-status {
-  margin-top: 0.6rem;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.uber-login-button {
-  display: inline-block;
-  background: #000;
-  color: #fff;
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
-.uber-login-button:hover {
-  opacity: 0.85;
-}
-
 fieldset {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -184,12 +162,6 @@ tr.top-pick {
   color: #666;
 }
 
-.data-source {
-  font-size: 0.85rem;
-  color: #555;
-  margin: 0.2rem 0 0.8rem;
-}
-
 .back-link {
   display: inline-block;
   color: var(--accent);
@@ -211,19 +183,6 @@ tr.top-pick {
   margin: 0 0 0.8rem;
   font-size: 0.85rem;
   color: #666;
-}
-
-.live-badge {
-  display: inline-block;
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  padding: 0 0.3rem;
-  vertical-align: middle;
 }
 
 #map {

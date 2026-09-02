@@ -10,16 +10,6 @@
   <header>
     <h1>RYDESAVYR</h1>
     <p>The best way home, ranked for what matters to you right now.</p>
-    {% if uber_available %}
-      <div class="uber-status">
-        {% if uber_connected %}
-          <span>Uber connected ✓</span>
-          <a href="{{ url_for('uber_disconnect') }}">disconnect</a>
-        {% else %}
-          <a href="{{ url_for('uber_login') }}" class="uber-login-button">Log in with Uber</a>
-        {% endif %}
-      </div>
-    {% endif %}
   </header>
 
   {% with messages = get_flashed_messages() %}
@@ -48,8 +38,6 @@
         nothing in particular
       {%- endfor %}
     </p>
-
-    {% if data_source %}<p class="data-source">{{ data_source }}</p>{% endif %}
 
     {% if origin and destination and google_maps_api_key %}
       <div id="map"></div>
@@ -83,7 +71,6 @@
             <td>{{ loop.index }}</td>
             <td>
               {{ r.label }}
-              {% if r.live %}<span class="live-badge" title="Distance and time from Google Maps">live</span>{% endif %}
               {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
             </td>
             <td>{{ r.score }}</td>
@@ -103,10 +90,10 @@
 
   <footer>
     <p>
-      Distance and travel time come from the Google Maps Routes API when a
-      GOOGLE_MAPS_API_KEY is configured (rows marked <span class="live-badge">live</span>);
-      fares and impact scores are still typical NYC rate-card approximations, not live
-      quotes from each provider. See the project README for details.
+      Citibike, Subway, and Bus use live data. Uber and Lyft prices are fit from real
+      NYC TLC trip history; every other option (including Taxi) is a rate-card formula,
+      not a live quote. The map above shows each option's real route from Google Maps.
+      See the project README for details.
     </p>
   </footer>
 

@@ -9,8 +9,9 @@ Stop Monitoring API. The SIRI feed needs a free API key — register at
 https://register.developer.obanyc.com/ (MTA says issued within ~30 min)
 and put it in a local .env file as MTA_BUS_API_KEY. Without that key set,
 this module quietly skips itself and callers should fall back to the
-formula estimate in modes.py — nothing else breaks, same pattern as
-uber_client.py.
+formula estimate in modes.py — nothing else breaks, same fail-safe pattern
+every live data source in this project follows (citibike.py, mta_subway.py,
+routing.py).
 
 Replaces only the *wait time* half of a bus estimate with a real number;
 the ride portion (distance/time between stops) still uses the same

@@ -121,10 +121,11 @@ def get_live_estimate(*args, **kwargs):
     return None
 
 
-def get_shuttle_option(origin, destination, route_info=None, now=None):
+def get_shuttle_option(origin, destination, driving_route=None, now=None):
     """Public entry point. ``origin`` / ``destination`` are (lat, lon)
-    tuples; ``route_info`` is an optional ``directions.route`` result for
-    the driving mode (``{"distance_miles", "duration_minutes"}``).
+    tuples; ``driving_route`` is an optional ``(route_miles,
+    travel_minutes)`` pair from ``routing.get_driving_route`` — the same
+    real road-network route Uber/Lyft/Taxi use.
 
     Returns a dict shaped like ``modes.py``'s ``Mode.estimate()`` output,
     or ``None`` when the shuttle isn't usable for this trip (outside the
@@ -134,15 +135,12 @@ def get_shuttle_option(origin, destination, route_info=None, now=None):
     if unavailable_reason(origin, destination, now) is not None:
         return None
 
-    if route_info is not None:
-        base_miles = route_info["distance_miles"]
-        base_minutes = route_info["duration_minutes"]
-        live = True
+    if driving_route is not None:
+        base_miles, base_minutes = driving_route
     else:
         straight_miles = geodesic(origin, destination).miles
         base_miles = straight_miles * FALLBACK_ROUTE_FACTOR
         base_minutes = (base_miles / FALLBACK_AVG_SPEED_MPH) * 60
-        live = False
 
     route_miles = base_miles * SHARED_RIDE_DISTANCE_FACTOR
     ride_minutes = base_minutes * SHARED_RIDE_TIME_FACTOR
@@ -161,16 +159,14 @@ def get_shuttle_option(origin, destination, route_info=None, now=None):
         "energy": ENERGY_COST,
         "nature_vibez": SCENERY,
         "carbon": round(CARBON_G_PER_MILE * route_miles),
-        "live": live,
         # It's a van on city streets — the map draws it with the driving engine.
         "route_profile": "driving",
         "notes": (
             "Free with an active UNI + Columbia ID. Shared van operated by Via, "
             "runs nightly until 3am within the Morningside/Manhattanville "
             "coverage area. Book in the Evening Shuttle app or call 646-692-0576. "
-            + ("Driving distance and time from Google Maps, plus shared-ride and "
-               "dispatch-wait estimates." if live else
-               "Distance, time and wait are estimates.")
+            "Distance and time are estimates with a shared-ride and dispatch-wait "
+            "allowance on top of the road route."
         ),
     }
 
