@@ -131,11 +131,25 @@ def _start_uber_login(pending_trip=None):
     return redirect(uber_client.authorize_url(redirect_uri, state))
 
 
-def _render(tiers, results, origin_address, destination_address):
+def _render_form(tiers, origin_address="", destination_address=""):
     return render_template(
         "index.html",
         tiers=tiers,
         tier_order=TIER_ORDER,
+        tier_labels=TIER_LABELS,
+        factors=FACTORS,
+        factor_labels=FACTOR_LABELS,
+        origin_address=origin_address,
+        destination_address=destination_address,
+        uber_connected=bool(session.get("uber_token")),
+        uber_available=uber_client.is_configured(),
+    )
+
+
+def _render_results(tiers, results, origin_address, destination_address):
+    return render_template(
+        "results.html",
+        tiers=tiers,
         tier_labels=TIER_LABELS,
         factors=FACTORS,
         factor_labels=FACTOR_LABELS,
@@ -153,61 +167,69 @@ def geocode_search():
     return jsonify(search_addresses(request.args.get("q", "")))
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def index():
     tiers = {factor: DEFAULT_TIER for factor in FACTORS}
-    results = None
-    origin_address = ""
-    destination_address = ""
+    return _render_form(tiers)
 
-    if request.method == "POST":
-        origin_address = request.form.get("origin_address", "").strip()
-        destination_address = request.form.get("destination_address", "").strip()
-        origin_lat = request.form.get("origin_lat", "").strip()
-        origin_lng = request.form.get("origin_lng", "").strip()
-        destination_lat = request.form.get("destination_lat", "").strip()
-        destination_lng = request.form.get("destination_lng", "").strip()
 
-        def tier_for(factor):
-            raw = request.form.get(f"weight_{factor}", "")
-            if raw.isdigit() and 0 <= int(raw) < len(TIER_ORDER):
-                return TIER_ORDER[int(raw)]
-            return DEFAULT_TIER
+@app.route("/results", methods=["GET", "POST"])
+def results():
+    # A bare GET (refresh, bookmark, back button) has no trip to rank — send
+    # the user to the form instead of a 405.
+    if request.method == "GET":
+        return redirect(url_for("index"))
 
-        tiers = {factor: tier_for(factor) for factor in FACTORS}
+    origin_address = request.form.get("origin_address", "").strip()
+    destination_address = request.form.get("destination_address", "").strip()
+    origin_lat = request.form.get("origin_lat", "").strip()
+    origin_lng = request.form.get("origin_lng", "").strip()
+    destination_lat = request.form.get("destination_lat", "").strip()
+    destination_lng = request.form.get("destination_lng", "").strip()
 
-        try:
-            if origin_lat and origin_lng:
-                origin = (float(origin_lat), float(origin_lng))
-            elif origin_address:
-                origin = geocode_address(origin_address)
-            else:
-                raise ValueError("Share your location or enter a starting address.")
+    def tier_for(factor):
+        raw = request.form.get(f"weight_{factor}", "")
+        if raw.isdigit() and 0 <= int(raw) < len(TIER_ORDER):
+            return TIER_ORDER[int(raw)]
+        return DEFAULT_TIER
 
-            if destination_lat and destination_lng:
-                destination = (float(destination_lat), float(destination_lng))
-            elif destination_address:
-                destination = geocode_address(destination_address)
-            else:
-                raise ValueError("Enter a destination address.")
+    tiers = {factor: tier_for(factor) for factor in FACTORS}
 
-            # Auto-connect to Uber the first time it's needed, instead of
-            # making the user find a separate "connect account" button —
-            # most people will be doing this one-handed on a phone.
-            if uber_client.is_configured() and not _valid_uber_access_token():
-                return _start_uber_login({
-                    "origin": origin,
-                    "destination": destination,
-                    "tiers": tiers,
-                    "origin_address": origin_address,
-                    "destination_address": destination_address,
-                })
+    try:
+        if origin_lat and origin_lng:
+            origin = (float(origin_lat), float(origin_lng))
+        elif origin_address:
+            origin = geocode_address(origin_address)
+        else:
+            raise ValueError("Share your location or enter a starting address.")
 
-            results = _compute_results(origin, destination, tiers)
-        except ValueError as exc:
-            flash(str(exc))
+        if destination_lat and destination_lng:
+            destination = (float(destination_lat), float(destination_lng))
+        elif destination_address:
+            destination = geocode_address(destination_address)
+        else:
+            raise ValueError("Enter a destination address.")
 
-    return _render(tiers, results, origin_address, destination_address)
+        # Auto-connect to Uber the first time it's needed, instead of
+        # making the user find a separate "connect account" button —
+        # most people will be doing this one-handed on a phone.
+        if uber_client.is_configured() and not _valid_uber_access_token():
+            return _start_uber_login({
+                "origin": origin,
+                "destination": destination,
+                "tiers": tiers,
+                "origin_address": origin_address,
+                "destination_address": destination_address,
+            })
+
+        computed = _compute_results(origin, destination, tiers)
+    except ValueError as exc:
+        # Send the user back to the form (with what they typed) rather than
+        # to an empty results page.
+        flash(str(exc))
+        return _render_form(tiers, origin_address, destination_address)
+
+    return _render_results(tiers, computed, origin_address, destination_address)
 
 
 @app.route("/uber/login")
@@ -241,8 +263,10 @@ def uber_callback():
     if pending is None:
         return redirect(url_for("index"))
 
-    results = _compute_results(pending["origin"], pending["destination"], pending["tiers"])
-    return _render(pending["tiers"], results, pending["origin_address"], pending["destination_address"])
+    computed = _compute_results(pending["origin"], pending["destination"], pending["tiers"])
+    return _render_results(
+        pending["tiers"], computed, pending["origin_address"], pending["destination_address"]
+    )
 
 
 @app.route("/uber/disconnect")

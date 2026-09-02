@@ -190,6 +190,29 @@ tr.top-pick {
   margin: 0.2rem 0 0.8rem;
 }
 
+.back-link {
+  display: inline-block;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.trip-summary {
+  margin: 0.4rem 0 0.2rem;
+  font-size: 1rem;
+}
+
+.ranked-by {
+  margin: 0 0 0.8rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
 .live-badge {
   display: inline-block;
   font-size: 0.65rem;

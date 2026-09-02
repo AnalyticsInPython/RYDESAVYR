@@ -30,7 +30,7 @@
     {% endif %}
   {% endwith %}
 
-  <form method="post" id="trip-form">
+  <form method="post" action="{{ url_for('results') }}" id="trip-form">
     <fieldset>
       <legend>Trip</legend>
 
@@ -85,47 +85,6 @@
 
     <button type="submit">Find the best way home</button>
   </form>
-
-  {% if results %}
-    <section class="results">
-      <h2>Ranked options</h2>
-      {% if data_source %}<p class="data-source">{{ data_source }}</p>{% endif %}
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Option</th>
-            <th>Score</th>
-            <th>Price</th>
-            <th>Time</th>
-            <th>Distance</th>
-            <th>Energy</th>
-            <th>Scenery</th>
-            <th>Carbon</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in results %}
-            <tr class="{{ 'top-pick' if loop.first else '' }}">
-              <td>{{ loop.index }}</td>
-              <td>
-                {{ r.label }}
-                {% if r.live %}<span class="live-badge" title="Distance and time from Google Maps">live</span>{% endif %}
-                {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
-              </td>
-              <td>{{ r.score }}</td>
-              <td>${{ "%.2f"|format(r.price) }}</td>
-              <td>{{ r.time }} min</td>
-              <td>{{ r.distance }} mi</td>
-              <td>{{ r.energy }}/10</td>
-              <td>{{ r.nature_vibez }}/10</td>
-              <td>{{ r.carbon }} g CO₂</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-  {% endif %}
 
   <footer>
     <p>
