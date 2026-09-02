@@ -125,35 +125,26 @@ in earlier project history) is the place to pick that back up.
 
 ## Live route map
 
-The results page shows a Google Map (`templates/results.html`, Maps
-JavaScript API) with the origin and destination pinned. Clicking a row
-calls the newer Routes API (`routes.googleapis.com`, not the older
-"Directions API") for that mode's real route and draws it by decoding
-the returned polyline with the Maps JavaScript API's `geometry` library:
+The results page shows a Leaflet map (`templates/results.html`) with the
+origin and destination pinned. Clicking a row draws that mode's route:
 
-- **Uber / Lyft / Taxi / Columbia Evening Shuttle** — a live `DRIVE` route.
-- **Citibike** — a live `BICYCLE` route.
-- **Walking** — a live `WALK` route.
-- **Subway / bus / commuter rail** — a live `TRANSIT` route, restricted via
-  `transitPreferences.allowedTravelModes` to that specific vehicle type
-  (`SUBWAY`, `BUS`, or `TRAIN`/`RAIL`) so the three don't just show
-  Google's one "best" transit itinerary three times over. That
-  restriction is a hint, not a guarantee — Google falls back to its own
-  best multimodal route rather than erroring when no matching itinerary
-  exists, so the three can still occasionally coincide.
+- **Uber / Lyft / Taxi / Columbia Evening Shuttle** — a real driving route
+  from a free, no-API-key OSRM instance (`routing.openstreetmap.de/routed-car`).
+- **Citibike** — a real cycling route from that same OSRM project's
+  bike-profile instance (`routed-bike`).
+- **Walking** — a real walking route from its foot-profile instance
+  (`routed-foot`).
+- **Subway / bus / commuter rail** — no free live transit-routing API exists,
+  so these show the straight-line distance they're already estimated from
+  (see above), thickened to make clear it's the selected route.
 
 Each mode in `modes.py` (and the live `citibike.py` / `mta_subway.py` /
 `mta_bus.py` / `columbia_shuttle.py` results) carries a `route_profile`
-field saying which of these travel modes it uses. This map is purely
-visual — it doesn't feed back into the price/time/distance numbers in the
-results table (see "How estimates are computed" above for what does).
-
-Requires `GOOGLE_MAPS_API_KEY` in `.env` with the **Maps JavaScript API**
-and **Routes API** enabled on that key's project (see `.env.example`) —
-without the key set at all, the map is just hidden and nothing else
-breaks; without the Routes API specifically enabled, the map loads but
-every route request fails and falls back to the "unavailable" status
-message.
+field saying which of these it uses. This map is purely visual — it doesn't feed back into the
+price/time/distance numbers in the results table (see "How estimates are
+computed" above for what does; note this map's `routing.openstreetmap.de`
+is a different, genuinely multi-profile OSRM instance from the car-only
+`router.project-osrm.org` that `routing.py` uses for pricing).
 
 ## Why formulas instead of live APIs
 
