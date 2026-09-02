@@ -114,20 +114,35 @@ scores that are easy to tune in `modes.py`. `scoring.py` normalizes every
 factor 0-1 across the candidate modes and combines them using the user's
 per-factor importance tiers ("does not matter" / "neutral" / "critical").
 
-Citibike (`citibike.py`), the subway (`mta_subway.py`), and Uber
-(`uber_client.py`) are the exceptions — they pull live data instead of using
-the formula. See below.
+Citibike (`citibike.py`), the subway (`mta_subway.py`), the bus
+(`mta_bus.py`), and Uber (`uber_client.py`) are the exceptions — they pull
+live data instead of using the formula. See below.
+
+The **Columbia Evening Shuttle** (`columbia_shuttle.py`) is a further
+special case: a free, evening-only shared van that Via operates for
+Columbia. It only shows up when the trip both starts and ends inside the
+Columbia coverage area *and* falls within that night's service window
+(a month-dependent start time until 3 a.m.), so there is no rate-card
+fallback — it simply isn't offered otherwise.
 
 ## Why formulas instead of live APIs
 
 - **Subway**: live "next train" wait times come from MTA's free
   GTFS-realtime feeds (`mta_subway.py`); the between-stations ride portion
   still uses the formula.
-- **Bus, commuter rail**: MTA GTFS-realtime feeds exist and are the natural
-  next upgrade — swap the relevant `Mode.estimate()` call for a real API
-  request.
+- **Bus**: live "next bus" wait times come from MTA Bus Time's SIRI feed
+  (`mta_bus.py`, free `MTA_BUS_API_KEY`); the ride portion still uses the
+  formula.
+- **Commuter rail**: MTA GTFS-realtime feeds exist and are the natural next
+  upgrade — swap the relevant `Mode.estimate()` call for a real API request.
 - **Citibike**: live pricing and station availability are wired up via the
   GBFS feed — see `citibike.py`.
+- **Columbia Evening Shuttle**: there is no public Via API (their developer
+  program is partnership-gated and undocumented) and Columbia publishes no
+  feed, so the estimate is a formula built on the shuttle's published rules
+  — free fare, geofenced coverage area, month-aware hours.
+  `columbia_shuttle.py` has a `get_live_estimate` stub for the day access
+  is granted, same as `uber_client.py`.
 - **Uber**: OAuth login is wired up, but Uber currently rejects the
   `request` scope for a freshly-created app — see "Live Uber pricing"
   above. Gated behind Business Development, same as Lyft/Curb.

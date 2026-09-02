@@ -11,6 +11,7 @@ from geopy.distance import geodesic
 
 import uber_client
 from citibike import get_citibike_option
+from columbia_shuttle import get_shuttle_option
 from directions import DirectionsError, api_key, route
 from geocode import geocode_address, search_addresses
 from modes import MODES
@@ -92,6 +93,13 @@ def _compute_results(origin, destination, tiers):
             estimates.append(live_option)
         else:
             estimates.append(estimate_for(fallback_mode))
+
+    # The Columbia Evening Shuttle is a conditional mode, not an always-on
+    # one: it only appears when the trip is inside its coverage area and
+    # within tonight's service hours, so there is no rate-card fallback.
+    shuttle_option = get_shuttle_option(origin, destination, route_infos.get("driving"))
+    if shuttle_option is not None:
+        estimates.append(shuttle_option)
 
     access_token = _valid_uber_access_token()
     if access_token:
