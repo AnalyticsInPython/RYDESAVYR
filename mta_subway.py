@@ -14,6 +14,12 @@ straight-line x detour-factor formula modes.py uses for every other mode,
 since real routing between two arbitrary stations would need a full
 transit-routing graph, out of scope here.
 
+The reported trip time is door-to-door: walk to the nearest station +
+live wait for the next train + estimated in-train ride + walk from the
+destination station. The two walking legs use the same straight-line x
+detour-factor / average-walking-speed formula as modes.py's Walking
+entry.
+
 Known simplification: GTFS-RT's stop_ids are direction-suffixed (e.g.
 "101N"/"101S" for uptown/downtown), and picking the right one for "toward
 the destination" is genuinely a routing problem. This uses a cheap
@@ -61,6 +67,10 @@ SUBWAY_FARE = 2.90
 # static Subway entry for consistency.
 ROUTE_FACTOR = 1.4
 AVG_SPEED_MPH = 17
+
+# Walking to/from the nearest station, matched to modes.py's Walking entry.
+WALK_ROUTE_FACTOR = 1.2
+WALK_SPEED_MPH = 3.0
 
 STATION_INFO_CACHE_TTL_SECONDS = 86400  # station locations barely change
 
@@ -168,6 +178,16 @@ def estimate_ride_distance_and_time(origin_latlon, destination_latlon):
     return route_miles, minutes
 
 
+def estimate_walk_distance_and_time(straight_line_miles):
+    """Walking distance and minutes for a straight-line gap, with a detour
+    factor and an average walking speed (same assumptions as modes.py's
+    Walking entry). Returns (walk_miles, minutes).
+    """
+    walk_miles = straight_line_miles * WALK_ROUTE_FACTOR
+    minutes = (walk_miles / WALK_SPEED_MPH) * 60
+    return walk_miles, minutes
+
+
 def build_subway_details(origin, destination):
     """Do the actual work and return every intermediate piece as a plain
     dict: nearest origin/destination stations, chosen direction, live wait
@@ -213,11 +233,17 @@ def build_subway_details(origin, destination):
         (destination_station["lat"], destination_station["lon"]),
     )
 
+    walk_miles, walk_minutes = estimate_walk_distance_and_time(
+        walk_to_station_mi + walk_from_station_mi
+    )
+
     return {
         "origin_station": origin_station,
         "walk_to_station_miles": round(walk_to_station_mi, 2),
         "destination_station": destination_station,
         "walk_from_station_miles": round(walk_from_station_mi, 2),
+        "walk_distance_miles": round(walk_miles, 2),
+        "walk_minutes": round(walk_minutes, 1),
         "direction": direction,
         "direction_was_fallback": direction != preferred_direction,
         "wait_minutes": round(wait_minutes, 1),
@@ -248,7 +274,10 @@ def get_subway_option(origin, destination):
     notes = (
         f"Live MTA data. Next train from {details['origin_station']['name']} "
         f"in {details['wait_minutes']} min, toward "
-        f"{details['destination_station']['name']}."
+        f"{details['destination_station']['name']}. Distance and time are "
+        f"door-to-door: ~{details['walk_distance_miles']} mi / "
+        f"~{details['walk_minutes']} min walking to/from the stations, plus "
+        f"wait + ride."
     )
     if details["direction_was_fallback"]:
         notes += " (Opposite-direction train shown — none scheduled the other way right now.)"
@@ -256,11 +285,14 @@ def get_subway_option(origin, destination):
     return {
         "key": "subway",
         "label": "Subway",
-        "distance": details["distance_miles"],
-        "time": round(details["wait_minutes"] + details["ride_minutes"], 1),
+        "distance": round(details["distance_miles"] + details["walk_distance_miles"], 2),
+        "time": round(
+            details["walk_minutes"] + details["wait_minutes"] + details["ride_minutes"], 1
+        ),
         "price": details["price_usd"],
         "energy": 3,
         "nature_vibez": 3,
+        # Carbon is from the train ride only — the walking legs add none.
         "carbon": round(90 * details["distance_miles"]),
         "notes": notes,
         "route_profile": "transit",

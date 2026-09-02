@@ -38,11 +38,25 @@ route map" below), which is purely visual and doesn't feed back into these
 numbers.
 
 Citibike (`citibike.py`), Subway (`mta_subway.py`), and Bus (`mta_bus.py`,
-once a key is configured) are the exceptions that pull live *pricing* data
-instead of using a rate-card formula at all.
+once a key is configured) are the exceptions that pull live data instead of
+using a rate-card formula at all. For Subway the reported distance and time
+are door-to-door — walk to the nearest station + live wait + ride + walk
+from the destination station — with the walking legs and the
+between-stations ride still estimated from the straight-line formula.
+
+The **Columbia Evening Shuttle** (`columbia_shuttle.py`) is a further
+conditional mode: a free, evening-only shared van that Via operates for
+Columbia. It only appears when the trip both starts and ends inside the
+Columbia coverage area *and* falls within that night's service window (a
+month-dependent start time until 3 a.m.), so there is no rate-card fallback
+— it simply isn't offered otherwise. It travels by road, so it reuses the
+same `routing.py` driving route as Uber/Lyft/Taxi, with a shared-ride and
+dispatch-wait allowance on top.
 
 Geocoding uses OpenStreetMap's free Nominatim service (`geocode.py`) — no API
-key required.
+key required; it also powers the From/To address autocomplete. The trip
+form lives at `/` (`templates/index.html`) and the ranked results render on
+their own page at `/results` (`templates/results.html`).
 
 ## How the Uber/Lyft rate cards were built
 
@@ -111,11 +125,11 @@ in earlier project history) is the place to pick that back up.
 
 ## Live route map
 
-The results page shows a Leaflet map (`templates/index.html`) with the
+The results page shows a Leaflet map (`templates/results.html`) with the
 origin and destination pinned. Clicking a row draws that mode's route:
 
-- **Uber / Lyft / Taxi** — a real driving route from a free, no-API-key OSRM
-  instance (`routing.openstreetmap.de/routed-car`).
+- **Uber / Lyft / Taxi / Columbia Evening Shuttle** — a real driving route
+  from a free, no-API-key OSRM instance (`routing.openstreetmap.de/routed-car`).
 - **Citibike** — a real cycling route from that same OSRM project's
   bike-profile instance (`routed-bike`).
 - **Walking** — a real walking route from its foot-profile instance
@@ -124,9 +138,9 @@ origin and destination pinned. Clicking a row draws that mode's route:
   so these show the straight-line distance they're already estimated from
   (see above), thickened to make clear it's the selected route.
 
-Each mode in `modes.py` (and the live `citibike.py`/`mta_subway.py`/
-`mta_bus.py` results) carries a `route_profile` field saying which of these
-it uses. This map is purely visual — it doesn't feed back into the
+Each mode in `modes.py` (and the live `citibike.py` / `mta_subway.py` /
+`mta_bus.py` / `columbia_shuttle.py` results) carries a `route_profile`
+field saying which of these it uses. This map is purely visual — it doesn't feed back into the
 price/time/distance numbers in the results table (see "How estimates are
 computed" above for what does; note this map's `routing.openstreetmap.de`
 is a different, genuinely multi-profile OSRM instance from the car-only
@@ -147,6 +161,12 @@ is a different, genuinely multi-profile OSRM instance from the car-only
   still formula-based.
 - **Citibike**: live pricing is already wired up via the GBFS feed — see
   `citibike.py`.
+- **Columbia Evening Shuttle**: there is no public Via API (their developer
+  program is partnership-gated and undocumented) and Columbia publishes no
+  feed, so the estimate is a formula built on the shuttle's published rules
+  — free fare, geofenced coverage area, month-aware hours.
+  `columbia_shuttle.py` has a `get_live_estimate` stub for the day access
+  is granted.
 - **Empower**: intentionally excluded — the NYC TLC has publicly declared it
   an unlicensed rideshare app, so it's left out rather than integrated.
 

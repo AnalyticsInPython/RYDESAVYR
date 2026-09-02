@@ -2,10 +2,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask, flash, jsonify, render_template, request
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 from geopy.distance import geodesic
 
 from citibike import get_citibike_option
+from columbia_shuttle import get_shuttle_option
 from geocode import geocode_address, search_addresses
 from modes import MODES
 from mta_bus import get_bus_option
@@ -53,14 +54,35 @@ def _compute_results(origin, destination, tiers):
         fallback_mode = next(mode for mode in MODES if mode.key == key)
         estimates.append(get_live_option(origin, destination) or estimate_mode(fallback_mode))
 
+    # The Columbia Evening Shuttle is a conditional mode, not an always-on
+    # one: it only appears when the trip is inside its coverage area and
+    # within tonight's service hours, so there is no rate-card fallback. It
+    # travels by road, so it reuses the same OSRM driving route.
+    shuttle_option = get_shuttle_option(origin, destination, driving_route)
+    if shuttle_option is not None:
+        estimates.append(shuttle_option)
+
     return rank_modes(estimates, tiers)
 
 
-def _render(tiers, results, origin_address, destination_address, origin=None, destination=None):
+def _render_form(tiers, origin_address="", destination_address=""):
     return render_template(
         "index.html",
         tiers=tiers,
         tier_order=TIER_ORDER,
+        tier_labels=TIER_LABELS,
+        factors=FACTORS,
+        factor_labels=FACTOR_LABELS,
+        origin_address=origin_address,
+        destination_address=destination_address,
+    )
+
+
+def _render_results(tiers, results, origin_address, destination_address,
+                    origin=None, destination=None):
+    return render_template(
+        "results.html",
+        tiers=tiers,
         tier_labels=TIER_LABELS,
         factors=FACTORS,
         factor_labels=FACTOR_LABELS,
@@ -77,51 +99,59 @@ def geocode_search():
     return jsonify(search_addresses(request.args.get("q", "")))
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def index():
     tiers = {factor: DEFAULT_TIER for factor in FACTORS}
-    results = None
-    origin_address = ""
-    destination_address = ""
-    origin = None
-    destination = None
+    return _render_form(tiers)
 
-    if request.method == "POST":
-        origin_address = request.form.get("origin_address", "").strip()
-        destination_address = request.form.get("destination_address", "").strip()
-        origin_lat = request.form.get("origin_lat", "").strip()
-        origin_lng = request.form.get("origin_lng", "").strip()
-        destination_lat = request.form.get("destination_lat", "").strip()
-        destination_lng = request.form.get("destination_lng", "").strip()
 
-        def tier_for(factor):
-            raw = request.form.get(f"weight_{factor}", "")
-            if raw.isdigit() and 0 <= int(raw) < len(TIER_ORDER):
-                return TIER_ORDER[int(raw)]
-            return DEFAULT_TIER
+@app.route("/results", methods=["GET", "POST"])
+def results():
+    # A bare GET (refresh, bookmark, back button) has no trip to rank -- send
+    # the user to the form instead of a 405.
+    if request.method == "GET":
+        return redirect(url_for("index"))
 
-        tiers = {factor: tier_for(factor) for factor in FACTORS}
+    origin_address = request.form.get("origin_address", "").strip()
+    destination_address = request.form.get("destination_address", "").strip()
+    origin_lat = request.form.get("origin_lat", "").strip()
+    origin_lng = request.form.get("origin_lng", "").strip()
+    destination_lat = request.form.get("destination_lat", "").strip()
+    destination_lng = request.form.get("destination_lng", "").strip()
 
-        try:
-            if origin_lat and origin_lng:
-                origin = (float(origin_lat), float(origin_lng))
-            elif origin_address:
-                origin = geocode_address(origin_address)
-            else:
-                raise ValueError("Share your location or enter a starting address.")
+    def tier_for(factor):
+        raw = request.form.get(f"weight_{factor}", "")
+        if raw.isdigit() and 0 <= int(raw) < len(TIER_ORDER):
+            return TIER_ORDER[int(raw)]
+        return DEFAULT_TIER
 
-            if destination_lat and destination_lng:
-                destination = (float(destination_lat), float(destination_lng))
-            elif destination_address:
-                destination = geocode_address(destination_address)
-            else:
-                raise ValueError("Enter a destination address.")
+    tiers = {factor: tier_for(factor) for factor in FACTORS}
 
-            results = _compute_results(origin, destination, tiers)
-        except ValueError as exc:
-            flash(str(exc))
+    try:
+        if origin_lat and origin_lng:
+            origin = (float(origin_lat), float(origin_lng))
+        elif origin_address:
+            origin = geocode_address(origin_address)
+        else:
+            raise ValueError("Share your location or enter a starting address.")
 
-    return _render(tiers, results, origin_address, destination_address, origin, destination)
+        if destination_lat and destination_lng:
+            destination = (float(destination_lat), float(destination_lng))
+        elif destination_address:
+            destination = geocode_address(destination_address)
+        else:
+            raise ValueError("Enter a destination address.")
+
+        computed = _compute_results(origin, destination, tiers)
+    except ValueError as exc:
+        # Send the user back to the form (with what they typed) rather than
+        # to an empty results page.
+        flash(str(exc))
+        return _render_form(tiers, origin_address, destination_address)
+
+    return _render_results(
+        tiers, computed, origin_address, destination_address, origin, destination
+    )
 
 
 if __name__ == "__main__":

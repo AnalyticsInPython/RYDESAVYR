@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RYDESAVYR — Ranked options</title>
+  {% if origin and destination %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>RYDESAVYR</h1>
+    <p>The best way home, ranked for what matters to you right now.</p>
+  </header>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash">
+        {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <p><a href="{{ url_for('index') }}" class="back-link">← Plan another trip</a></p>
+
+  <section class="results">
+    <h2>Ranked options</h2>
+
+    <p class="trip-summary">
+      <strong>{{ origin_address or "Your location" }}</strong>
+      <span aria-hidden="true">→</span>
+      <strong>{{ destination_address }}</strong>
+    </p>
+    <p class="ranked-by">
+      Ranked by:
+      {% for f in factors if tiers[f] != 'none' -%}
+        {{ "" if loop.first else ", " }}{{ factor_labels[f] }}{{ " (critical)" if tiers[f] == 'critical' }}
+      {%- else -%}
+        nothing in particular
+      {%- endfor %}
+    </p>
+
+    {% if origin and destination %}
+      <div id="map"></div>
+      <p id="map-status" class="hint"></p>
+      <div class="map-legend">
+        <span><i class="legend-swatch driving"></i> Uber / Lyft / Taxi / Shuttle — live driving route</span>
+        <span><i class="legend-swatch cycling"></i> Citibike — live cycling route</span>
+        <span><i class="legend-swatch walking"></i> Walking — live walking route</span>
+        <span><i class="legend-swatch transit"></i> Subway / Bus / Train — straight-line estimate</span>
+      </div>
+      <p class="hint">Click a row below to show that option's route on the map.</p>
+    {% endif %}
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Option</th>
+          <th>Score</th>
+          <th>Price</th>
+          <th>Time</th>
+          <th>Distance</th>
+          <th>Energy</th>
+          <th>Scenery</th>
+          <th>Carbon</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+          <tr class="{{ 'top-pick' if loop.first else '' }} route-row" data-key="{{ r.key }}">
+            <td>{{ loop.index }}</td>
+            <td>
+              {{ r.label }}
+              {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
+            </td>
+            <td>{{ r.score }}</td>
+            <td>${{ "%.2f"|format(r.price) }}</td>
+            <td>{{ r.time }} min</td>
+            <td>{{ r.distance }} mi</td>
+            <td>{{ r.energy }}/10</td>
+            <td>{{ r.nature_vibez }}/10</td>
+            <td>{{ r.carbon }} g CO₂</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p><a href="{{ url_for('index') }}" class="back-link">← Plan another trip</a></p>
+  </section>
+
+  <footer>
+    <p>
+      Citibike, Subway, and Bus use live data. Uber and Lyft prices are fit from real
+      NYC TLC trip history; every other option (including Taxi) is a rate-card formula,
+      not a live quote. The map above draws each driving/cycling/walking option's real
+      route from OSM's free OSRM service. See the project README for details.
+    </p>
+  </footer>
+
+  {% if results and origin and destination %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+      (function () {
+        var origin = {{ origin|tojson }};
+        var destination = {{ destination|tojson }};
+        var results = {{ results|tojson }};
+
+        // Free OSRM instances that actually run distinct routing engines
+        // per mode (unlike the public router.project-osrm.org demo used by
+        // routing.py for pricing, which silently returns the car route for
+        // every profile name -- see routing.py's docstring).
+        var PROFILE_META = {
+          driving: { url: 'https://routing.openstreetmap.de/routed-car/route/v1/driving/', color: '#1f6feb', description: 'live driving route' },
+          cycling: { url: 'https://routing.openstreetmap.de/routed-bike/route/v1/driving/', color: '#e8590c', description: 'live cycling route' },
+          walking: { url: 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/', color: '#8250df', description: 'live walking route' },
+        };
+
+        var map = L.map('map');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        L.marker(origin).addTo(map).bindPopup('Start');
+        L.marker(destination).addTo(map).bindPopup('Destination');
+
+        var bounds = L.latLngBounds([origin, destination]);
+
+        // Every mode estimates from this same straight-line distance (see
+        // modes.py), so it's always shown — thin/light as a backdrop, or
+        // thick/dark when the selected mode has no live routing API of its
+        // own (subway, bus, commuter train).
+        var straightLine = L.polyline([origin, destination], {
+          color: '#bbb', weight: 2, dashArray: '6 8',
+        }).addTo(map);
+
+        var activeRouteLayer = null;
+        var routeCache = {};
+        var statusEl = document.getElementById('map-status');
+
+        function fetchRoute(profile) {
+          if (routeCache[profile]) return Promise.resolve(routeCache[profile]);
+          var url = PROFILE_META[profile].url
+            + origin[1] + ',' + origin[0] + ';' + destination[1] + ',' + destination[0]
+            + '?overview=full&geometries=geojson';
+          return fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.code !== 'Ok' || !data.routes.length) return null;
+              var coords = data.routes[0].geometry.coordinates.map(function (c) {
+                return [c[1], c[0]];
+              });
+              routeCache[profile] = coords;
+              return coords;
+            })
+            .catch(function () { return null; });
+        }
+
+        function selectRoute(key) {
+          var mode = results.find(function (r) { return r.key === key; });
+          if (!mode) return;
+
+          document.querySelectorAll('.route-row').forEach(function (row) {
+            row.classList.toggle('selected-route', row.dataset.key === key);
+          });
+
+          if (activeRouteLayer) {
+            map.removeLayer(activeRouteLayer);
+            activeRouteLayer = null;
+          }
+
+          var meta = PROFILE_META[mode.route_profile];
+          if (!meta) {
+            straightLine.setStyle({ color: '#333', weight: 5, dashArray: '6 8' });
+            statusEl.textContent = 'Showing ' + mode.label + ': straight-line estimate — no live transit routing API available.';
+            map.fitBounds(bounds, { padding: [40, 40] });
+            return;
+          }
+
+          straightLine.setStyle({ color: '#bbb', weight: 2, dashArray: '6 8' });
+          statusEl.textContent = 'Showing ' + mode.label + ': loading route…';
+
+          fetchRoute(mode.route_profile).then(function (coords) {
+            if (!coords) {
+              statusEl.textContent = 'Showing ' + mode.label + ': live route unavailable right now — straight-line reference shown instead.';
+              map.fitBounds(bounds, { padding: [40, 40] });
+              return;
+            }
+            activeRouteLayer = L.polyline(coords, { color: meta.color, weight: 4 }).addTo(map);
+            statusEl.textContent = 'Showing ' + mode.label + ': ' + meta.description + '.';
+            map.fitBounds(activeRouteLayer.getBounds().extend(bounds), { padding: [40, 40] });
+          });
+        }
+
+        document.querySelectorAll('.route-row').forEach(function (row) {
+          row.addEventListener('click', function () { selectRoute(row.dataset.key); });
+        });
+
+        map.fitBounds(bounds, { padding: [40, 40] });
+        selectRoute(results[0].key);
+      })();
+    </script>
+  {% endif %}
+</body>
+</html>
