@@ -12,6 +12,7 @@ import uber_client
 from citibike import get_citibike_option
 from geocode import geocode_address, search_addresses
 from modes import MODES
+from mta_subway import get_subway_option
 from scoring import (
     DEFAULT_TIER,
     FACTOR_LABELS,
@@ -43,12 +44,19 @@ def _valid_uber_access_token():
     return token["access_token"]
 
 
+_LIVE_MODE_SOURCES = {
+    "citibike": get_citibike_option,
+    "subway": get_subway_option,
+}
+
+
 def _compute_results(origin, destination, tiers):
     distance_miles = geodesic(origin, destination).miles
 
-    estimates = [mode.estimate(distance_miles) for mode in MODES if mode.key != "citibike"]
-    citibike_mode = next(mode for mode in MODES if mode.key == "citibike")
-    estimates.append(get_citibike_option(origin, destination) or citibike_mode.estimate(distance_miles))
+    estimates = [mode.estimate(distance_miles) for mode in MODES if mode.key not in _LIVE_MODE_SOURCES]
+    for key, get_live_option in _LIVE_MODE_SOURCES.items():
+        fallback_mode = next(mode for mode in MODES if mode.key == key)
+        estimates.append(get_live_option(origin, destination) or fallback_mode.estimate(distance_miles))
 
     access_token = _valid_uber_access_token()
     if access_token:
