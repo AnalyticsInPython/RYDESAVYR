@@ -10,16 +10,6 @@
   <header>
     <h1>RYDESAVYR</h1>
     <p>The best way home, ranked for what matters to you right now.</p>
-    {% if uber_available %}
-      <div class="uber-status">
-        {% if uber_connected %}
-          <span>Uber connected ✓</span>
-          <a href="{{ url_for('uber_disconnect') }}">disconnect</a>
-        {% else %}
-          <a href="{{ url_for('uber_login') }}" class="uber-login-button">Log in with Uber</a>
-        {% endif %}
-      </div>
-    {% endif %}
   </header>
 
   {% with messages = get_flashed_messages() %}
@@ -57,10 +47,6 @@
       <input type="hidden" id="destination_lng" name="destination_lng">
       <p class="hint">Pick a suggestion from the list so we route between the exact
         addresses you mean, not just whatever a text search happens to match.</p>
-
-      {% if uber_available and not uber_connected %}
-        <p class="hint">Not signed in yet? Searching will also prompt you to log in with Uber.</p>
-      {% endif %}
     </fieldset>
 
     <fieldset>
@@ -140,9 +126,9 @@
 
   <footer>
     <p>
-      Estimates are computed from typical NYC rate cards and average speeds, not live
-      quotes from each provider — see the project README for why, and for the plan to
-      swap in real-time data (MTA, Citibike) later.
+      Citibike and Subway use live data. Uber and Lyft prices are fit from real NYC TLC
+      trip history; every other option (including Taxi) is a rate-card formula, not a
+      live quote — see the project README for details.
     </p>
   </footer>
 

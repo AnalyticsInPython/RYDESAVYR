@@ -1,6 +1,4 @@
 import os
-import secrets
-import time
 
 from dotenv import load_dotenv
 
@@ -8,15 +6,15 @@ load_dotenv()
 
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 
-from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, flash, jsonify, render_template, request
 from geopy.distance import geodesic
 
-import uber_client
 from citibike import get_citibike_option
 from geocode import geocode_address, search_addresses
 from modes import MODES
 from mta_bus import get_bus_option
 from mta_subway import get_subway_option
+from routing import get_driving_route
 from scoring import (
     DEFAULT_TIER,
     FACTOR_LABELS,
@@ -30,57 +28,36 @@ app = Flask(__name__)
 app.secret_key = "rydesavyr-dev"
 
 
-def _valid_uber_access_token():
-    """Return a usable access token from the session, refreshing it if it
-    expired, or None if the user has never connected / refresh failed."""
-    token = session.get("uber_token")
-    if not token:
-        return None
-    if token["expires_at"] - 60 < time.time():
-        if not token.get("refresh_token"):
-            return None
-        try:
-            token = uber_client.refresh_access_token(token["refresh_token"])
-        except Exception:
-            session.pop("uber_token", None)
-            return None
-        session["uber_token"] = token
-    return token["access_token"]
-
-
 _LIVE_MODE_SOURCES = {
     "citibike": get_citibike_option,
     "subway": get_subway_option,
     "bus": get_bus_option,
 }
 
+# Modes that actually travel by car -- these prefer a real OSRM driving
+# route over the straight-line x route_factor guess every other mode uses.
+# Walking/Citibike are deliberately excluded: routing.py's OSRM public demo
+# only serves the driving network (see its docstring), so routing them
+# through it would silently return a car route, not a walking/biking one.
+_DRIVING_MODE_KEYS = {"uber", "lyft", "taxi"}
+
 
 def _compute_results(origin, destination, tiers):
     distance_miles = geodesic(origin, destination).miles
+    driving_route = get_driving_route(origin, destination)
 
-    estimates = [mode.estimate(distance_miles) for mode in MODES if mode.key not in _LIVE_MODE_SOURCES]
+    def estimate_mode(mode):
+        if driving_route is not None and mode.key in _DRIVING_MODE_KEYS:
+            route_miles, travel_minutes = driving_route
+            return mode.estimate_from_route(route_miles, travel_minutes)
+        return mode.estimate(distance_miles)
+
+    estimates = [estimate_mode(mode) for mode in MODES if mode.key not in _LIVE_MODE_SOURCES]
     for key, get_live_option in _LIVE_MODE_SOURCES.items():
         fallback_mode = next(mode for mode in MODES if mode.key == key)
-        estimates.append(get_live_option(origin, destination) or fallback_mode.estimate(distance_miles))
-
-    access_token = _valid_uber_access_token()
-    if access_token:
-        live = uber_client.get_live_estimate(access_token, origin, destination)
-        if live:
-            for estimate in estimates:
-                if estimate["key"] == "uber":
-                    estimate.update({k: v for k, v in live.items() if v is not None})
+        estimates.append(get_live_option(origin, destination) or estimate_mode(fallback_mode))
 
     return rank_modes(estimates, tiers)
-
-
-def _start_uber_login(pending_trip=None):
-    if pending_trip is not None:
-        session["pending_trip"] = pending_trip
-    state = secrets.token_urlsafe(16)
-    session["uber_oauth_state"] = state
-    redirect_uri = url_for("uber_callback", _external=True)
-    return redirect(uber_client.authorize_url(redirect_uri, state))
 
 
 def _render(tiers, results, origin_address, destination_address, origin=None, destination=None):
@@ -96,8 +73,6 @@ def _render(tiers, results, origin_address, destination_address, origin=None, de
         destination_address=destination_address,
         origin=origin,
         destination=destination,
-        uber_connected=bool(session.get("uber_token")),
-        uber_available=uber_client.is_configured(),
         google_maps_api_key=GOOGLE_MAPS_API_KEY,
     )
 
@@ -147,67 +122,11 @@ def index():
             else:
                 raise ValueError("Enter a destination address.")
 
-            # Auto-connect to Uber the first time it's needed, instead of
-            # making the user find a separate "connect account" button —
-            # most people will be doing this one-handed on a phone.
-            if uber_client.is_configured() and not _valid_uber_access_token():
-                return _start_uber_login({
-                    "origin": origin,
-                    "destination": destination,
-                    "tiers": tiers,
-                    "origin_address": origin_address,
-                    "destination_address": destination_address,
-                })
-
             results = _compute_results(origin, destination, tiers)
         except ValueError as exc:
             flash(str(exc))
 
     return _render(tiers, results, origin_address, destination_address, origin, destination)
-
-
-@app.route("/uber/login")
-def uber_login():
-    if not uber_client.is_configured():
-        flash("Uber login isn't set up yet — add UBER_CLIENT_ID/UBER_CLIENT_SECRET to .env first.")
-        return redirect(url_for("index"))
-    return _start_uber_login()
-
-
-@app.route("/uber/callback")
-def uber_callback():
-    pending = session.pop("pending_trip", None)
-    expected_state = session.pop("uber_oauth_state", None)
-    error = request.args.get("error")
-    state = request.args.get("state")
-
-    if error == "access_denied":
-        flash("Uber sign-in was cancelled — showing an estimated Uber price instead.")
-    elif error:
-        flash(f"Uber sign-in failed ({error}) — showing an estimated Uber price instead.")
-    elif not state or state != expected_state:
-        flash("Uber sign-in couldn't be verified — showing an estimated Uber price instead.")
-    else:
-        try:
-            redirect_uri = url_for("uber_callback", _external=True)
-            session["uber_token"] = uber_client.exchange_code(request.args.get("code"), redirect_uri)
-        except Exception:
-            flash("Couldn't connect to Uber right now — showing an estimated Uber price instead.")
-
-    if pending is None:
-        return redirect(url_for("index"))
-
-    results = _compute_results(pending["origin"], pending["destination"], pending["tiers"])
-    return _render(
-        pending["tiers"], results, pending["origin_address"], pending["destination_address"],
-        pending["origin"], pending["destination"],
-    )
-
-
-@app.route("/uber/disconnect")
-def uber_disconnect():
-    session.pop("uber_token", None)
-    return redirect(url_for("index"))
 
 
 if __name__ == "__main__":

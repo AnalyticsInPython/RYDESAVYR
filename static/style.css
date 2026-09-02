@@ -16,28 +16,6 @@ header h1 {
   margin-bottom: 0.2rem;
 }
 
-.uber-status {
-  margin-top: 0.6rem;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.uber-login-button {
-  display: inline-block;
-  background: #000;
-  color: #fff;
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
-.uber-login-button:hover {
-  opacity: 0.85;
-}
-
 fieldset {
   border: 1px solid var(--border);
   border-radius: 8px;
