@@ -221,9 +221,8 @@ tr.top-pick {
   border-top-color: #8250df;
 }
 
-.legend-swatch.straight {
-  border-top-style: dashed;
-  border-top-color: #888;
+.legend-swatch.transit {
+  border-top-color: #0d9488;
 }
 
 .route-row {

@@ -25,12 +25,10 @@ class Mode:
     nature_vibez: float      # 0-10, higher = more pleasant/scenic
     carbon_g_per_mile: float
     notes: str = field(default="")
-    # Which live OSRM routing engine (see templates/index.html) draws this
-    # mode's line on the map: "driving", "cycling", or "walking". Transit
-    # modes have no live routing API available, so they fall back to
-    # "straight" and the map just shows the straight-line distance they're
-    # actually estimated from (see the module docstring above).
-    route_profile: str = field(default="straight")
+    # Which Google Maps Directions travel mode (see templates/index.html)
+    # draws this mode's line on the results map: "driving", "cycling",
+    # "walking", or "transit" (the default, for subway/bus/commuter rail).
+    route_profile: str = field(default="transit")
 
     def estimate(self, distance_miles: float) -> dict:
         route_miles = distance_miles * self.route_factor
