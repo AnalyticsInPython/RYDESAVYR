@@ -51,23 +51,38 @@ def _normalize(values, lower_is_better):
     return [(v - lo) / (hi - lo) for v in values]
 
 
-def rank_modes(estimates, weights):
-    """Rank a list of already-computed mode estimates by weighted score (0-100).
+def rank_modes(estimates, tiers):
+    """Rank a list of already-computed mode estimates using the user's tiers.
 
     Estimates are computed upstream (see modes.py / citibike.py / app.py) so
     that a live API quote can be spliced into one mode's dict before ranking.
+
+    Any factor marked "critical" is the primary sort key — e.g. marking time
+    critical puts the fastest option first, full stop. With multiple critical
+    factors, modes are ranked by their average normalized score across just
+    those factors. The overall weighted blend (used for the displayed score,
+    and to break ties) still runs across every factor, weighted by tier, with
+    "does not matter" factors excluded entirely.
     """
     normalized_by_factor = {
         factor: _normalize([e[factor] for e in estimates], LOWER_IS_BETTER[factor])
         for factor in FACTORS
     }
 
-    total_weight = sum(weights.get(factor, 0) for factor in FACTORS) or 1
-    for i, estimate in enumerate(estimates):
-        score = sum(
-            weights.get(factor, 0) * normalized_by_factor[factor][i]
-            for factor in FACTORS
-        )
-        estimate["score"] = round(100 * score / total_weight, 1)
+    critical_factors = [f for f in FACTORS if tiers.get(f) == "critical"]
+    weights = {f: TIER_WEIGHTS[tiers.get(f, DEFAULT_TIER)] for f in FACTORS}
+    total_weight = sum(weights.values()) or 1
 
-    return sorted(estimates, key=lambda e: e["score"], reverse=True)
+    for i, estimate in enumerate(estimates):
+        overall = sum(weights[f] * normalized_by_factor[f][i] for f in FACTORS)
+        estimate["score"] = round(100 * overall / total_weight, 1)
+        estimate["_critical_score"] = (
+            sum(normalized_by_factor[f][i] for f in critical_factors) / len(critical_factors)
+            if critical_factors
+            else 0.0
+        )
+
+    ranked = sorted(estimates, key=lambda e: (e["_critical_score"], e["score"]), reverse=True)
+    for estimate in ranked:
+        del estimate["_critical_score"]
+    return ranked

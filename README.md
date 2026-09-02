@@ -39,11 +39,13 @@ for distance and time, and formula pricing for Uber.
 
 `scoring.py` normalizes every factor 0-1 across the candidate modes and
 combines them using the user's per-factor importance tiers ("does not
-matter" / "neutral" / "critical"). Geocoding for the fallback distance uses
-OpenStreetMap's free Nominatim service (`geocode.py`).
+matter" / "neutral" / "critical"); any factor marked "critical" becomes the
+primary sort key. Geocoding uses OpenStreetMap's free Nominatim service
+(`geocode.py`), which also powers the From/To address autocomplete.
 
-**Citibike (`citibike.py`) and Uber (`uber_client.py`) are the two
-exceptions** — they pull live pricing instead of using the formula. See below.
+**Citibike (`citibike.py`), the subway (`mta_subway.py`), and Uber
+(`uber_client.py`) are the exceptions** — they pull live data instead of
+using the formula. See below.
 
 ## Google Maps setup
 
@@ -61,11 +63,21 @@ Each ranked trip makes one Routes API request per travel mode (driving,
 bicycling, walking, and one transit request each for subway, bus, and
 commuter rail).
 
-## Live Uber pricing (optional)
+## Live Uber pricing (needs Uber's approval — not actually self-serve)
 
-Uber's Rides API is self-serve for personal use — no business approval
-needed until you want to go beyond yourself + 4 other registered
-developers. To turn it on:
+The OAuth "Log in with Uber" login flow is wired up end-to-end
+(`uber_client.py` + the `/uber/*` routes in `app.py`), but **as of testing
+this in September 2026, Uber's dashboard blocks it**: a freshly-created app
+gets `invalid_scope` when requesting the `request` scope, and the Access
+Token tab says plainly:
+
+> Your application currently does not have access to Authorization Code
+> scopes. Please contact your Uber business development representative or
+> Uber point of contact to request access.
+
+So despite what older docs/SDK fragments suggested, this scope is gated
+behind an actual Uber Business Development relationship — the same as
+Lyft and Curb (see below). If you get that access in the future:
 
 1. Sign in at https://developer.uber.com with your own Uber account and
    create an application (any API suite works).
@@ -80,24 +92,45 @@ redirects to Uber's own login page (no separate "connect account" step —
 it's part of the same tap that starts the search, since most people will
 be doing this one-handed on a phone). After they grant access, it bounces
 back and shows a live UberX price/ETA instead of the formula estimate.
-Nobody else's search can use it until Uber grants your app full production
-access — until then it only works for accounts you've explicitly added as
-developers on the app.
 
-Without `UBER_CLIENT_ID`/`UBER_CLIENT_SECRET` set, this is skipped entirely
-and Uber falls back to the same rate-card formula as every other mode.
+Without `UBER_CLIENT_ID`/`UBER_CLIENT_SECRET` set, or if Uber rejects the
+scope, this fails safe and Uber falls back to the same rate-card formula
+as every other mode — nothing else breaks.
 
 `uber_client.py` reconstructs the live-estimate response shape from Uber's
 official Python SDK and cached doc fragments, since developer.uber.com's
 docs are JavaScript-rendered and couldn't be fully verified here — if a
-field comes back missing or renamed once you test with a real account,
-adjust `get_live_estimate` in that file.
+field comes back missing or renamed once real access is granted, adjust
+`get_live_estimate` in that file.
 
 ## Why rate cards for pricing
 
-- **Citibike**: live pricing is already wired up via the GBFS feed — see
-  `citibike.py`.
-- **Uber**: live pricing is wired up via OAuth — see "Live Uber pricing" above.
+There's no live-quote API available for most of these services (see below),
+so each mode in `modes.py` is a simple formula: a rate card (base fare + cost
+per mile/minute) applied to the real route distance and time (or, without a
+Google Maps key, to an average NYC speed and route-directness factor over the
+straight-line distance). Energy, scenery, and carbon are fixed per-mode
+scores that are easy to tune in `modes.py`. `scoring.py` normalizes every
+factor 0-1 across the candidate modes and combines them using the user's
+per-factor importance tiers ("does not matter" / "neutral" / "critical").
+
+Citibike (`citibike.py`), the subway (`mta_subway.py`), and Uber
+(`uber_client.py`) are the exceptions — they pull live data instead of using
+the formula. See below.
+
+## Why formulas instead of live APIs
+
+- **Subway**: live "next train" wait times come from MTA's free
+  GTFS-realtime feeds (`mta_subway.py`); the between-stations ride portion
+  still uses the formula.
+- **Bus, commuter rail**: MTA GTFS-realtime feeds exist and are the natural
+  next upgrade — swap the relevant `Mode.estimate()` call for a real API
+  request.
+- **Citibike**: live pricing and station availability are wired up via the
+  GBFS feed — see `citibike.py`.
+- **Uber**: OAuth login is wired up, but Uber currently rejects the
+  `request` scope for a freshly-created app — see "Live Uber pricing"
+  above. Gated behind Business Development, same as Lyft/Curb.
 - **Lyft**: its public developer portal has stopped onboarding new apps, so
   this stays formula-based for now.
 - **Curb**: no public API at all; folded into the "Taxi" line item using the
@@ -109,8 +142,11 @@ adjust `get_live_estimate` in that file.
 
 ## Next steps
 
-- Swap in MTA GTFS-realtime for live subway/bus arrival times.
+- Extend the live MTA GTFS-realtime integration from subway to bus and
+  commuter-rail arrival times.
 - Cache Routes API responses so re-ranking the same trip (e.g. after moving a
   slider) doesn't re-hit the API.
 - Persist a saved "home" address per user instead of typing it every time.
-- Apply for Lyft partner API access if live fare quotes become available again.
+- Contact Uber Business Development to request `request`-scope access for
+  live Uber pricing (see "Live Uber pricing" above), and apply for Lyft
+  partner API access if live fare quotes become available again.

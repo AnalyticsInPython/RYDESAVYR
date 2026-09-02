@@ -36,8 +36,11 @@
 
       <label for="origin_address">From</label>
       <div class="row">
-        <input type="text" id="origin_address" name="origin_address"
-               placeholder="e.g. Columbia University" value="{{ origin_address }}">
+        <div class="autocomplete-wrap">
+          <input type="text" id="origin_address" name="origin_address" autocomplete="off"
+                 placeholder="e.g. Columbia University" value="{{ origin_address }}">
+          <ul class="autocomplete-list" id="origin_address-list" hidden></ul>
+        </div>
         <button type="button" id="use-location">Use my location</button>
       </div>
       <input type="hidden" id="origin_lat" name="origin_lat">
@@ -45,8 +48,15 @@
       <p id="location-status" class="hint"></p>
 
       <label for="destination_address">To</label>
-      <input type="text" id="destination_address" name="destination_address"
-             placeholder="e.g. your home address" value="{{ destination_address }}">
+      <div class="autocomplete-wrap">
+        <input type="text" id="destination_address" name="destination_address" autocomplete="off"
+               placeholder="e.g. your home address" value="{{ destination_address }}">
+        <ul class="autocomplete-list" id="destination_address-list" hidden></ul>
+      </div>
+      <input type="hidden" id="destination_lat" name="destination_lat">
+      <input type="hidden" id="destination_lng" name="destination_lng">
+      <p class="hint">Pick a suggestion from the list so we route between the exact
+        addresses you mean, not just whatever a text search happens to match.</p>
 
       {% if uber_available and not uber_connected %}
         <p class="hint">Not signed in yet? Searching will also prompt you to log in with Uber.</p>
@@ -155,10 +165,106 @@
       );
     });
 
-    document.getElementById('origin_address').addEventListener('input', function () {
-      document.getElementById('origin_lat').value = '';
-      document.getElementById('origin_lng').value = '';
-    });
+    function setupAutocomplete(inputId, latId, lngId) {
+      const input = document.getElementById(inputId);
+      const list = document.getElementById(inputId + '-list');
+      const latField = document.getElementById(latId);
+      const lngField = document.getElementById(lngId);
+
+      let debounceTimer = null;
+      let requestSeq = 0;
+      let activeIndex = -1;
+
+      function closeList() {
+        list.hidden = true;
+        list.innerHTML = '';
+        activeIndex = -1;
+      }
+
+      function selectSuggestion(suggestion) {
+        input.value = suggestion.label;
+        latField.value = suggestion.lat;
+        lngField.value = suggestion.lon;
+        closeList();
+      }
+
+      function renderSuggestions(suggestions) {
+        list.innerHTML = '';
+        if (suggestions.length === 0) {
+          closeList();
+          return;
+        }
+        suggestions.forEach(function (suggestion, i) {
+          const item = document.createElement('li');
+          item.textContent = suggestion.label;
+          item.className = 'autocomplete-item';
+          item.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            selectSuggestion(suggestion);
+          });
+          list.appendChild(item);
+        });
+        activeIndex = -1;
+        list.hidden = false;
+      }
+
+      function highlight(index) {
+        const items = list.querySelectorAll('.autocomplete-item');
+        items.forEach(function (item, i) {
+          item.classList.toggle('active', i === index);
+        });
+        if (index >= 0 && items[index]) {
+          items[index].scrollIntoView({ block: 'nearest' });
+        }
+      }
+
+      input.addEventListener('input', function () {
+        latField.value = '';
+        lngField.value = '';
+
+        const query = input.value.trim();
+        clearTimeout(debounceTimer);
+        if (query.length < 3) {
+          closeList();
+          return;
+        }
+
+        debounceTimer = setTimeout(function () {
+          const seq = ++requestSeq;
+          fetch('/geocode/search?q=' + encodeURIComponent(query))
+            .then(function (response) { return response.json(); })
+            .then(function (suggestions) {
+              if (seq === requestSeq) renderSuggestions(suggestions);
+            })
+            .catch(function () { closeList(); });
+        }, 300);
+      });
+
+      input.addEventListener('keydown', function (e) {
+        const items = list.querySelectorAll('.autocomplete-item');
+        if (list.hidden || items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeIndex = Math.min(activeIndex + 1, items.length - 1);
+          highlight(activeIndex);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeIndex = Math.max(activeIndex - 1, 0);
+          highlight(activeIndex);
+        } else if (e.key === 'Enter' && activeIndex >= 0) {
+          e.preventDefault();
+          items[activeIndex].dispatchEvent(new MouseEvent('mousedown'));
+        } else if (e.key === 'Escape') {
+          closeList();
+        }
+      });
+
+      input.addEventListener('blur', closeList);
+    }
+
+    setupAutocomplete('origin_address', 'origin_lat', 'origin_lng');
+    setupAutocomplete('destination_address', 'destination_lat', 'destination_lng');
   </script>
 </body>
 </html>

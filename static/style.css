@@ -69,8 +69,42 @@ input[type="text"] {
   gap: 0.5rem;
 }
 
-.row input[type="text"] {
+.row .autocomplete-wrap {
   flex: 1;
+}
+
+.autocomplete-wrap {
+  position: relative;
+}
+
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0.2rem 0 0;
+  padding: 0.3rem 0;
+  list-style: none;
+  background: Canvas;
+  color: CanvasText;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.autocomplete-item {
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.autocomplete-item.active,
+.autocomplete-item:hover {
+  background: var(--accent);
+  color: white;
 }
 
 .hint {

@@ -6,21 +6,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from geopy.distance import geodesic
 
 import uber_client
 from citibike import get_citibike_option
 from directions import DirectionsError, api_key, route
-from geocode import geocode_address
+from geocode import geocode_address, search_addresses
 from modes import MODES
+from mta_subway import get_subway_option
 from scoring import (
     DEFAULT_TIER,
     FACTOR_LABELS,
     FACTORS,
     TIER_LABELS,
     TIER_ORDER,
-    TIER_WEIGHTS,
     rank_modes,
 )
 
@@ -46,6 +46,12 @@ def _valid_uber_access_token():
     return token["access_token"]
 
 
+_LIVE_MODE_SOURCES = {
+    "citibike": get_citibike_option,
+    "subway": get_subway_option,
+}
+
+
 def fetch_routes(origin, destination):
     """Call the Google Maps Routes API once per distinct travel mode.
 
@@ -63,7 +69,7 @@ def fetch_routes(origin, destination):
     return route_infos, errors
 
 
-def _compute_results(origin, destination, weights):
+def _compute_results(origin, destination, tiers):
     distance_miles = geodesic(origin, destination).miles
 
     route_infos = {}
@@ -75,15 +81,15 @@ def _compute_results(origin, destination, weights):
     def estimate_for(mode):
         return mode.estimate(distance_miles, route_infos.get(mode.google_mode))
 
-    estimates = [estimate_for(mode) for mode in MODES if mode.key != "citibike"]
-
-    citibike_mode = next(mode for mode in MODES if mode.key == "citibike")
-    live_citibike = get_citibike_option(origin, destination)
-    if live_citibike is not None:
-        live_citibike.setdefault("live", True)
-        estimates.append(live_citibike)
-    else:
-        estimates.append(estimate_for(citibike_mode))
+    estimates = [estimate_for(mode) for mode in MODES if mode.key not in _LIVE_MODE_SOURCES]
+    for key, get_live_option in _LIVE_MODE_SOURCES.items():
+        fallback_mode = next(mode for mode in MODES if mode.key == key)
+        live_option = get_live_option(origin, destination)
+        if live_option is not None:
+            live_option.setdefault("live", True)
+            estimates.append(live_option)
+        else:
+            estimates.append(estimate_for(fallback_mode))
 
     access_token = _valid_uber_access_token()
     if access_token:
@@ -93,7 +99,7 @@ def _compute_results(origin, destination, weights):
                 if estimate["key"] == "uber":
                     estimate.update({k: v for k, v in live.items() if v is not None})
 
-    return rank_modes(estimates, weights)
+    return rank_modes(estimates, tiers)
 
 
 def _data_source_note(results):
@@ -142,6 +148,11 @@ def _render(tiers, results, origin_address, destination_address):
     )
 
 
+@app.route("/geocode/search")
+def geocode_search():
+    return jsonify(search_addresses(request.args.get("q", "")))
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     tiers = {factor: DEFAULT_TIER for factor in FACTORS}
@@ -154,6 +165,8 @@ def index():
         destination_address = request.form.get("destination_address", "").strip()
         origin_lat = request.form.get("origin_lat", "").strip()
         origin_lng = request.form.get("origin_lng", "").strip()
+        destination_lat = request.form.get("destination_lat", "").strip()
+        destination_lng = request.form.get("destination_lng", "").strip()
 
         def tier_for(factor):
             raw = request.form.get(f"weight_{factor}", "")
@@ -162,7 +175,6 @@ def index():
             return DEFAULT_TIER
 
         tiers = {factor: tier_for(factor) for factor in FACTORS}
-        weights = {factor: TIER_WEIGHTS[tiers[factor]] for factor in FACTORS}
 
         try:
             if origin_lat and origin_lng:
@@ -172,9 +184,12 @@ def index():
             else:
                 raise ValueError("Share your location or enter a starting address.")
 
-            if not destination_address:
+            if destination_lat and destination_lng:
+                destination = (float(destination_lat), float(destination_lng))
+            elif destination_address:
+                destination = geocode_address(destination_address)
+            else:
                 raise ValueError("Enter a destination address.")
-            destination = geocode_address(destination_address)
 
             # Auto-connect to Uber the first time it's needed, instead of
             # making the user find a separate "connect account" button —
@@ -183,13 +198,12 @@ def index():
                 return _start_uber_login({
                     "origin": origin,
                     "destination": destination,
-                    "weights": weights,
                     "tiers": tiers,
                     "origin_address": origin_address,
                     "destination_address": destination_address,
                 })
 
-            results = _compute_results(origin, destination, weights)
+            results = _compute_results(origin, destination, tiers)
         except ValueError as exc:
             flash(str(exc))
 
@@ -211,8 +225,10 @@ def uber_callback():
     error = request.args.get("error")
     state = request.args.get("state")
 
-    if error:
+    if error == "access_denied":
         flash("Uber sign-in was cancelled — showing an estimated Uber price instead.")
+    elif error:
+        flash(f"Uber sign-in failed ({error}) — showing an estimated Uber price instead.")
     elif not state or state != expected_state:
         flash("Uber sign-in couldn't be verified — showing an estimated Uber price instead.")
     else:
@@ -225,7 +241,7 @@ def uber_callback():
     if pending is None:
         return redirect(url_for("index"))
 
-    results = _compute_results(pending["origin"], pending["destination"], pending["weights"])
+    results = _compute_results(pending["origin"], pending["destination"], pending["tiers"])
     return _render(pending["tiers"], results, pending["origin_address"], pending["destination_address"])
 
 
