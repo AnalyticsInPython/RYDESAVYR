@@ -152,8 +152,10 @@ car/bike/foot engines.
 ## Why formulas instead of live APIs
 
 - **Subway**: live "next train" wait times come from MTA's free
-  GTFS-realtime feeds (`mta_subway.py`); the between-stations ride portion
-  still uses the formula.
+  GTFS-realtime feeds (`mta_subway.py`); the reported time is door-to-door
+  (walk to the nearest station + live wait + ride + walk from the
+  destination station), with the two walking legs and the between-stations
+  ride portion still estimated from the straight-line formula.
 - **Bus**: live "next bus" wait times come from MTA Bus Time's SIRI feed
   (`mta_bus.py`, free `MTA_BUS_API_KEY`); the ride portion still uses the
   formula.
