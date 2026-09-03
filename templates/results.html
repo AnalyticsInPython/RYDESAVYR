@@ -17,6 +17,10 @@
     {{ total }} min
   {%- endif -%}
 {%- endmacro -%}
+{%- macro trip_address(address) -%}
+  {%- set parts = address.split(',', 1) -%}
+  <strong>{{ parts[0] }}</strong>{% if parts|length > 1 %}<span class="trip-address-rest">{{ parts[1]|trim }}</span>{% endif %}
+{%- endmacro -%}
 {%- macro spotlight_body(s, mode_icons) -%}
   <p class="spotlight-eyebrow">{{ s.titles|join(' · ') }}</p>
   <h3 class="spotlight-mode">
@@ -52,12 +56,12 @@
     <div class="trip-summary">
       <div class="trip-point">
         <span class="trip-label">From</span>
-        <strong>{{ origin_address or "Your location" }}</strong>
+        {{ trip_address(origin_address or "Your location") }}
       </div>
       <span class="trip-arrow" aria-hidden="true">→</span>
       <div class="trip-point">
         <span class="trip-label">To</span>
-        <strong>{{ destination_address }}</strong>
+        {{ trip_address(destination_address) }}
       </div>
     </div>
 

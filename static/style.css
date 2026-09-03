@@ -461,6 +461,15 @@ tbody tr:last-child td {
   overflow-wrap: break-word;
 }
 
+.trip-address-rest {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+  overflow-wrap: break-word;
+}
+
 .trip-label {
   display: block;
   font-family: "Sora", "Inter", sans-serif;
