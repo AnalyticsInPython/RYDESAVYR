@@ -59,6 +59,18 @@ BUS_FARE = 2.90
 ROUTE_FACTOR = 1.3
 AVG_SPEED_MPH = 8
 
+# Walking to/from the nearest stop, matched to modes.py's Walking entry.
+WALK_ROUTE_FACTOR = 1.2
+WALK_SPEED_MPH = 3.0
+
+
+def _walk_leg(straight_line_miles):
+    """(walk_miles, minutes) for a straight-line gap, with a detour factor
+    and an average walking speed -- same assumptions as modes.py's Walking
+    entry."""
+    walk_miles = straight_line_miles * WALK_ROUTE_FACTOR
+    return walk_miles, (walk_miles / WALK_SPEED_MPH) * 60
+
 STOP_INFO_CACHE_TTL_SECONDS = 86400  # stop locations barely change
 
 _stop_info_cache = {"stops": None, "fetched_at": 0.0}
@@ -209,17 +221,44 @@ def get_bus_option(origin, destination):
     notes = (
         f"Live MTA data. Next bus from {details['origin_stop']['name']} "
         f"in {details['wait_minutes']} min, toward "
-        f"{details['destination_stop']['name']}."
+        f"{details['destination_stop']['name']}. "
+        f"CO₂ is an estimated average per rider (~150 g/mi)."
     )
+
+    to_mi, to_min = _walk_leg(details["walk_to_stop_miles"])
+    from_mi, from_min = _walk_leg(details["walk_from_stop_miles"])
+    legs = [
+        {
+            "kind": "walk",
+            "text": f"Walk to {details['origin_stop']['name']}",
+            "miles": round(to_mi, 2),
+            "minutes": round(to_min),
+        },
+        {
+            "kind": "bus",
+            "text": f"Ride to {details['destination_stop']['name']}",
+            "minutes": round(details["ride_minutes"]),
+            "detail": f"next bus in {details['wait_minutes']} min",
+        },
+        {
+            "kind": "walk",
+            "text": "Walk to your destination",
+            "miles": round(from_mi, 2),
+            "minutes": round(from_min),
+        },
+    ]
 
     return {
         "key": "bus",
         "label": "Bus",
+        "legs": legs,
         "distance": details["distance_miles"],
         "time": round(details["wait_minutes"] + details["ride_minutes"], 1),
         "price": details["price_usd"],
         "energy": 3,
         "nature_vibez": 3,
+        # ~150 g per passenger-mile: the bus's emissions divided across an
+        # average passenger load, reported per rider on the results page.
         "carbon": round(150 * details["distance_miles"]),
         "notes": notes,
         "route_profile": "transit",

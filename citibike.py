@@ -36,6 +36,19 @@ EBIKE_PER_MIN = 0.41                  # from minute 1, no free minutes
 ROUTE_FACTOR = 1.2
 AVG_SPEED_MPH = 8
 
+# Walking to the pickup station / from the dropoff station, matched to
+# modes.py's Walking entry.
+WALK_ROUTE_FACTOR = 1.2
+WALK_SPEED_MPH = 3.0
+
+
+def _walk_leg(straight_line_miles):
+    """(walk_miles, minutes) for a straight-line gap, with a detour factor
+    and an average walking speed -- same assumptions as modes.py's Walking
+    entry."""
+    walk_miles = straight_line_miles * WALK_ROUTE_FACTOR
+    return walk_miles, (walk_miles / WALK_SPEED_MPH) * 60
+
 STATION_INFO_CACHE_TTL_SECONDS = 600  # station locations barely change
 
 _feed_urls_cache = None
@@ -223,9 +236,40 @@ def get_citibike_option(origin, destination):
         f"docking at {details['dropoff_station']['name']}."
     )
 
+    to_mi, to_min = _walk_leg(details["walk_to_pickup_miles"])
+    from_mi, from_min = _walk_leg(details["walk_from_dropoff_miles"])
+    pickup_status = details["pickup_status"]
+    available = (
+        f"{pickup_status['ebikes']} e-bikes"
+        if is_ebike
+        else f"{pickup_status['bikes']} bikes"
+    )
+    legs = [
+        {
+            "kind": "walk",
+            "text": f"Walk to {details['pickup_station']['name']}",
+            "miles": round(to_mi, 2),
+            "minutes": round(to_min),
+            "detail": f"{available} available now",
+        },
+        {
+            "kind": "citibike",
+            "text": f"Ride to {details['dropoff_station']['name']}",
+            "minutes": round(details["time_minutes"]),
+        },
+        {
+            "kind": "walk",
+            "text": "Walk to your destination",
+            "miles": round(from_mi, 2),
+            "minutes": round(from_min),
+            "detail": f"{details['dropoff_status']['docks']} docks open now",
+        },
+    ]
+
     return {
         "key": "citibike",
         "label": "Citibike",
+        "legs": legs,
         "distance": details["distance_miles"],
         "time": details["time_minutes"],
         "price": details["price_usd"],
