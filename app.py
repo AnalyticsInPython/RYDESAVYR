@@ -21,7 +21,6 @@ from scoring import (
     FACTOR_LABELS,
     FACTORS,
     TIER_LABELS,
-    TIER_ORDER,
     rank_modes,
 )
 
@@ -69,14 +68,9 @@ def _compute_results(origin, destination, tiers):
     return rank_modes(estimates, tiers)
 
 
-def _render_form(tiers, origin_address="", destination_address=""):
+def _render_form(origin_address="", destination_address=""):
     return render_template(
         "index.html",
-        tiers=tiers,
-        tier_order=TIER_ORDER,
-        tier_labels=TIER_LABELS,
-        factors=FACTORS,
-        factor_labels=FACTOR_LABELS,
         origin_address=origin_address,
         destination_address=destination_address,
     )
@@ -106,8 +100,7 @@ def geocode_search():
 
 @app.route("/", methods=["GET"])
 def index():
-    tiers = {factor: DEFAULT_TIER for factor in FACTORS}
-    return _render_form(tiers)
+    return _render_form()
 
 
 @app.route("/results", methods=["GET", "POST"])
@@ -124,13 +117,7 @@ def results():
     destination_lat = request.form.get("destination_lat", "").strip()
     destination_lng = request.form.get("destination_lng", "").strip()
 
-    def tier_for(factor):
-        raw = request.form.get(f"weight_{factor}", "")
-        if raw.isdigit() and 0 <= int(raw) < len(TIER_ORDER):
-            return TIER_ORDER[int(raw)]
-        return DEFAULT_TIER
-
-    tiers = {factor: tier_for(factor) for factor in FACTORS}
+    tiers = {factor: DEFAULT_TIER for factor in FACTORS}
 
     try:
         if origin_lat and origin_lng:
@@ -152,7 +139,7 @@ def results():
         # Send the user back to the form (with what they typed) rather than
         # to an empty results page.
         flash(str(exc))
-        return _render_form(tiers, origin_address, destination_address)
+        return _render_form(origin_address, destination_address)
 
     return _render_results(
         tiers, computed, origin_address, destination_address, origin, destination

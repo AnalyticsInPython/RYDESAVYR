@@ -9,10 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="home">
   <header>
     <h1>RYDESAVYR</h1>
-    <p>The best way home, ranked for what matters to you right now.</p>
   </header>
 
   {% with messages = get_flashed_messages() %}
@@ -23,10 +22,8 @@
     {% endif %}
   {% endwith %}
 
-  <form method="post" action="{{ url_for('results') }}" id="trip-form">
-    <fieldset>
-      <legend>Trip</legend>
-
+  <form method="post" action="{{ url_for('results') }}" id="trip-form" class="trip-card">
+    <div class="field">
       <label for="origin_address">From</label>
       <div class="row">
         <div class="autocomplete-wrap">
@@ -39,7 +36,9 @@
       <input type="hidden" id="origin_lat" name="origin_lat">
       <input type="hidden" id="origin_lng" name="origin_lng">
       <p id="location-status" class="hint"></p>
+    </div>
 
+    <div class="field">
       <label for="destination_address">To</label>
       <div class="autocomplete-wrap">
         <input type="text" id="destination_address" name="destination_address" autocomplete="off"
@@ -48,49 +47,12 @@
       </div>
       <input type="hidden" id="destination_lat" name="destination_lat">
       <input type="hidden" id="destination_lng" name="destination_lng">
-      <p class="hint">Pick a suggestion from the list so we route between the exact
-        addresses you mean, not just whatever a text search happens to match.</p>
-    </fieldset>
-
-    <fieldset>
-      <legend>What matters to you?</legend>
-      {% for factor in factors %}
-        <label for="weight_{{ factor }}">{{ factor_labels[factor] }}</label>
-        <input type="range" min="0" max="{{ tier_order|length - 1 }}" step="1"
-               id="weight_{{ factor }}" name="weight_{{ factor }}"
-               list="tier-ticks"
-               value="{{ tier_order.index(tiers[factor]) }}"
-               oninput="updateTierScale('{{ factor }}', this.value)">
-        <div class="tier-scale" id="scale_{{ factor }}">
-          {% for tier in tier_order %}
-            <span class="tier-scale-item {{ 'active' if tiers[factor] == tier else '' }}">{{ tier_labels[tier] }}</span>
-          {% endfor %}
-        </div>
-      {% endfor %}
-      <datalist id="tier-ticks">
-        {% for tier in tier_order %}<option value="{{ loop.index0 }}"></option>{% endfor %}
-      </datalist>
-    </fieldset>
+    </div>
 
     <button type="submit">Find the best way home</button>
   </form>
 
-  <footer>
-    <p>
-      Citibike, Subway, and Bus use live data. Uber and Lyft prices are fit from real
-      NYC TLC trip history; every other option (including Taxi) is a rate-card formula,
-      not a live quote — see the project README for details.
-    </p>
-  </footer>
-
   <script>
-    function updateTierScale(factor, value) {
-      const items = document.querySelectorAll('#scale_' + factor + ' .tier-scale-item');
-      items.forEach(function (item, i) {
-        item.classList.toggle('active', i === Number(value));
-      });
-    }
-
     // A full form submit reloads the page, which would otherwise wipe the
     // hidden origin_lat/origin_lng fields and force clicking "Use my
     // location" (and re-triggering the browser's permission prompt) before

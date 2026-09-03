@@ -77,8 +77,18 @@ body {
   background-attachment: fixed;
 }
 
+body.home {
+  max-width: 560px;
+  padding-top: 5rem;
+}
+
 header {
   margin-bottom: 1.6rem;
+}
+
+body.home header {
+  text-align: center;
+  margin-bottom: 3rem;
 }
 
 header h1 {
@@ -91,6 +101,10 @@ header h1 {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+body.home header h1 {
+  font-size: 2.8rem;
 }
 
 header p {
@@ -118,11 +132,32 @@ legend {
   color: var(--accent);
 }
 
+.trip-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2.2rem 2rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
 label {
   display: block;
   margin-top: 1rem;
   font-weight: 600;
   font-size: 0.92rem;
+}
+
+.field label {
+  margin-top: 0;
+  margin-bottom: 0.55rem;
 }
 
 input[type="text"] {
@@ -194,67 +229,6 @@ input[type="text"]:focus {
   margin: 0.4rem 0 0;
 }
 
-input[type="range"] {
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--border);
-  margin-top: 0.5rem;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--accent-gradient);
-  box-shadow: var(--shadow-glow);
-  cursor: pointer;
-  border: 2px solid var(--surface);
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--accent-gradient);
-  box-shadow: var(--shadow-glow);
-  cursor: pointer;
-  border: 2px solid var(--surface);
-}
-
-.tier-scale {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.4rem;
-  margin-bottom: 0.3rem;
-}
-
-.tier-scale-item {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.tier-scale-item:first-child {
-  margin-left: -0.5rem;
-}
-
-.tier-scale-item:last-child {
-  margin-right: -0.5rem;
-}
-
-.tier-scale-item.active {
-  color: white;
-  font-weight: 600;
-  background: var(--accent-gradient);
-}
-
 button[type="submit"] {
   background: var(--accent-gradient);
   color: white;
@@ -268,6 +242,12 @@ button[type="submit"] {
   cursor: pointer;
   box-shadow: var(--shadow-glow);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.trip-card button[type="submit"] {
+  width: 100%;
+  padding: 1rem 1.6rem;
+  font-size: 1.05rem;
 }
 
 button[type="submit"]:hover {
