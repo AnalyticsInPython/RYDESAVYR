@@ -35,7 +35,7 @@
       </div>
       <input type="hidden" id="origin_lat" name="origin_lat">
       <input type="hidden" id="origin_lng" name="origin_lng">
-      <p id="location-status" class="hint"></p>
+      <p id="location-status" class="location-badge"></p>
     </div>
 
     <div class="field">
@@ -84,30 +84,63 @@
       }
     }
 
+    // Three highly visible cues all flip together whenever origin_lat/lng
+    // are backed by geolocation rather than a typed/picked address: the
+    // "Use my location" button itself, the From field's border + colored
+    // placeholder, and a pill badge below it -- a small muted caption alone
+    // was too easy to miss.
+    function setLocationStatus(message, kind) {
+      const status = document.getElementById('location-status');
+      status.textContent = message;
+      status.className = 'location-badge visible ' + kind;
+    }
+
+    function clearLocationStatus() {
+      const status = document.getElementById('location-status');
+      status.textContent = '';
+      status.className = 'location-badge';
+    }
+
+    function setLocationActive(isActive) {
+      document.getElementById('use-location').classList.toggle('location-active', isActive);
+      document.getElementById('use-location').textContent = isActive ? '📍 Location set' : 'Use my location';
+      document.getElementById('origin_address').classList.toggle('location-active', isActive);
+    }
+
     function applyOriginLocation(lat, lng, statusMessage) {
       document.getElementById('origin_lat').value = lat;
       document.getElementById('origin_lng').value = lng;
       document.getElementById('origin_address').value = '';
       document.getElementById('origin_address').placeholder = 'Using your current location';
-      document.getElementById('location-status').textContent = statusMessage;
+      setLocationActive(true);
+      setLocationStatus(statusMessage, 'success');
     }
 
     document.getElementById('use-location').addEventListener('click', function () {
-      const status = document.getElementById('location-status');
       if (!navigator.geolocation) {
-        status.textContent = 'Geolocation is not supported by this browser.';
+        setLocationStatus('Geolocation is not supported by this browser.', 'error');
         return;
       }
-      status.textContent = 'Locating…';
+      setLocationStatus('Locating…', 'pending');
       navigator.geolocation.getCurrentPosition(
         function (position) {
           saveOriginLocationToCache(position.coords.latitude, position.coords.longitude);
-          applyOriginLocation(position.coords.latitude, position.coords.longitude, 'Location set ✓');
+          applyOriginLocation(position.coords.latitude, position.coords.longitude, '📍 Using your current location');
         },
         function () {
-          status.textContent = 'Could not get your location — enter an address instead.';
+          setLocationActive(false);
+          setLocationStatus('Could not get your location — enter an address instead.', 'error');
         }
       );
+    });
+
+    // Typing a real address overrides geolocation -- drop the active state
+    // so the button/field/badge don't keep claiming "current location" once
+    // that's no longer true. (The lat/lng hidden fields are already cleared
+    // by setupAutocomplete's own input handler below.)
+    document.getElementById('origin_address').addEventListener('input', function () {
+      setLocationActive(false);
+      clearLocationStatus();
     });
 
     // On page load (including right after a search reloads the page),
@@ -116,7 +149,7 @@
     (function () {
       if (document.getElementById('origin_address').value.trim() !== '') return;
       var cached = loadFreshOriginLocationFromCache();
-      if (cached) applyOriginLocation(cached.lat, cached.lng, 'Using your last known location ✓');
+      if (cached) applyOriginLocation(cached.lat, cached.lng, '📍 Using your last known location');
     })();
 
     function setupAutocomplete(inputId, latId, lngId) {

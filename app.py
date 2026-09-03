@@ -79,25 +79,42 @@ def _compute_results(origin, destination, tiers):
 
 def _spotlights(results):
     """The handful of options worth putting in front of the user, each
-    paired with the stat that earns it a spot -- rather than making them
+    paired with the stat(s) that earn it a spot -- rather than making them
     scan every mode to find these themselves.
+
+    Rather than a single "top pick" blending every factor (price, time,
+    carbon, scenery, ...), the cards span the cheap-to-fast spectrum
+    directly: the cheapest option, the fastest, and a "best value" pick in
+    between that trades the two off against each other, plus the most
+    eco-friendly option called out on its own.
 
     When the same mode wins more than one category (e.g. Citibike is both
     the cheapest and the greenest), it gets a single card carrying every
     badge it earned instead of one repeated card per category.
     """
+    def normalized(factor):
+        values = [r[factor] for r in results]
+        lo, hi = min(values), max(values)
+        if hi == lo:
+            return {r["key"]: 1.0 for r in results}
+        return {r["key"]: (hi - r[factor]) / (hi - lo) for r in results}
+
+    price_score = normalized("price")
+    time_score = normalized("time")
+    best_value = max(results, key=lambda r: price_score[r["key"]] + time_score[r["key"]])
+
     candidates = [
-        ("Top pick", "score", results[0]),
-        ("Fastest", "time", min(results, key=lambda r: r["time"])),
-        ("Cheapest", "price", min(results, key=lambda r: r["price"])),
-        ("Most eco-friendly", "carbon", min(results, key=lambda r: r["carbon"])),
+        ("Cheapest", ["price"], min(results, key=lambda r: r["price"])),
+        ("Best value", ["price", "time"], best_value),
+        ("Fastest", ["time"], min(results, key=lambda r: r["time"])),
+        ("Most eco-friendly", ["carbon"], min(results, key=lambda r: r["carbon"])),
     ]
     by_mode_key = {}
     order = []
-    for title, highlight, mode in candidates:
+    for title, highlights, mode in candidates:
         card = by_mode_key.setdefault(mode["key"], {"titles": [], "highlights": [], "mode": mode})
         card["titles"].append(title)
-        card["highlights"].append(highlight)
+        card["highlights"].extend(highlights)
         if mode["key"] not in order:
             order.append(mode["key"])
     return [by_mode_key[key] for key in order]

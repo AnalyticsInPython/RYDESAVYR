@@ -33,7 +33,7 @@
 
     <div class="spotlight-grid">
       {% for s in spotlights %}
-        <div class="spotlight-card {{ 'top-pick' if 'Top pick' in s.titles else '' }} route-target"
+        <div class="spotlight-card {{ 'value-pick' if 'Best value' in s.titles else '' }} route-target"
              data-key="{{ s.mode.key }}">
           <p class="spotlight-eyebrow">{{ s.titles|join(' · ') }}</p>
           <h3 class="spotlight-mode">{{ s.mode.label }}</h3>

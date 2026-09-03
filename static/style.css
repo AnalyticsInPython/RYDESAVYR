@@ -17,6 +17,8 @@
   --danger-bg: #fdecea;
   --danger-border: #f5c2c0;
   --danger-text: #7a1f1a;
+  --accent-soft-bg: rgba(124, 58, 237, 0.10);
+  --accent-soft-border: rgba(124, 58, 237, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -37,6 +39,8 @@
     --danger-bg: #2c1616;
     --danger-border: #5c2b28;
     --danger-text: #f3b4b0;
+    --accent-soft-bg: rgba(167, 139, 250, 0.16);
+    --accent-soft-border: rgba(167, 139, 250, 0.4);
   }
 }
 
@@ -57,6 +61,8 @@
   --danger-bg: #2c1616;
   --danger-border: #5c2b28;
   --danger-text: #f3b4b0;
+  --accent-soft-bg: rgba(167, 139, 250, 0.16);
+  --accent-soft-border: rgba(167, 139, 250, 0.4);
 }
 
 * {
@@ -173,6 +179,17 @@ input[type="text"]:focus {
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
+input[type="text"].location-active {
+  background: var(--accent-soft-bg);
+  border-color: var(--accent);
+}
+
+input[type="text"].location-active::placeholder {
+  color: var(--accent);
+  font-weight: 700;
+  opacity: 1;
+}
+
 .row {
   display: flex;
   gap: 0.6rem;
@@ -223,6 +240,41 @@ input[type="text"]:focus {
   margin: 0.4rem 0 0;
 }
 
+.location-badge {
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  margin: 0.6rem 0 0;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.location-badge.visible {
+  display: inline-flex;
+}
+
+.location-badge.success {
+  background: var(--accent-soft-bg);
+  border-color: var(--accent-soft-border);
+  color: var(--accent);
+}
+
+.location-badge.pending {
+  background: var(--surface-alt);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.location-badge.error {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
 button[type="submit"] {
   background: var(--accent-gradient);
   color: white;
@@ -265,6 +317,16 @@ button[type="button"] {
 button[type="button"]:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+button[type="button"]#use-location.location-active {
+  background: var(--accent-gradient);
+  border-color: transparent;
+  color: white;
+}
+
+button[type="button"]#use-location.location-active:hover {
+  color: white;
 }
 
 table {
@@ -362,7 +424,7 @@ tbody tr:last-child td {
   box-shadow: var(--shadow-glow);
 }
 
-.spotlight-card.top-pick {
+.spotlight-card.value-pick {
   background: linear-gradient(135deg, rgba(124, 58, 237, 0.10), rgba(6, 182, 212, 0.06));
   border-color: var(--accent);
 }
