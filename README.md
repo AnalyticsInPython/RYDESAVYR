@@ -158,7 +158,9 @@ is a different, genuinely multi-profile OSRM instance from the car-only
 - **Bus**: live next-bus wait times come from MTA Bus Time's SIRI API (needs
   a free `MTA_BUS_API_KEY`) — see `mta_bus.py`.
 - **Commuter rail**: no free live-arrival API found yet for LIRR/Metro-North;
-  still formula-based.
+  still formula-based, and only offered when both trip ends are within a
+  comfortable walk of an actual station (`commuter_rail.py`) — otherwise it's
+  dropped rather than suggesting a train ride that isn't really reachable.
 - **Citibike**: live pricing is already wired up via the GBFS feed — see
   `citibike.py`.
 - **Columbia Evening Shuttle**: there is no public Via API (their developer
