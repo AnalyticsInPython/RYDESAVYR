@@ -11,13 +11,14 @@ from geopy.distance import geodesic
 
 from citibike import get_citibike_option
 from columbia_shuttle import get_shuttle_option
+from commuter_rail import is_trip_feasible as is_train_trip_feasible
 from geocode import geocode_address, search_addresses
 from modes import MODES
 from mta_bus import get_bus_option
 from mta_subway import get_subway_option
 from routing import get_driving_route
 from scoring import (
-    DEFAULT_TIER,
+    DEFAULT_WEIGHT_POSITION,
     FACTOR_LABELS,
     FACTORS,
     TIER_LABELS,
@@ -52,7 +53,17 @@ def _compute_results(origin, destination, tiers):
             return mode.estimate_from_route(route_miles, travel_minutes)
         return mode.estimate(distance_miles)
 
-    estimates = [estimate_mode(mode) for mode in MODES if mode.key not in _LIVE_MODE_SOURCES]
+    # Commuter Train is a rate-card formula like Uber/Lyft/Taxi, but unlike
+    # those it isn't always a real option: it only makes sense when both
+    # ends of the trip are within a comfortable walk of an actual LIRR/
+    # Metro-North station (see commuter_rail.py) -- otherwise it's silently
+    # dropped instead of formula-estimating a train ride that doesn't exist.
+    train_feasible = is_train_trip_feasible(origin, destination)
+    estimates = [
+        estimate_mode(mode) for mode in MODES
+        if mode.key not in _LIVE_MODE_SOURCES
+        and (mode.key != "train" or train_feasible)
+    ]
     for key, get_live_option in _LIVE_MODE_SOURCES.items():
         fallback_mode = next(mode for mode in MODES if mode.key == key)
         estimates.append(get_live_option(origin, destination) or estimate_mode(fallback_mode))
@@ -117,7 +128,9 @@ def results():
     destination_lat = request.form.get("destination_lat", "").strip()
     destination_lng = request.form.get("destination_lng", "").strip()
 
-    tiers = {factor: DEFAULT_TIER for factor in FACTORS}
+    # No priority controls on the form -- every factor gets scoring.py's
+    # default (neutral) weight position.
+    tiers = {factor: DEFAULT_WEIGHT_POSITION for factor in FACTORS}
 
     try:
         if origin_lat and origin_lng:
