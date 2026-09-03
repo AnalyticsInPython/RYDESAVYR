@@ -88,6 +88,27 @@ body.home {
   padding-top: 5rem;
 }
 
+/* Full-width NYC skyline silhouette behind the home-page form, anchored to
+   the bottom of the viewport. It's a mask, so the buildings take the
+   accent colour and follow light/dark automatically. Sits above the
+   body's gradient wash but behind all content. */
+body.home::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent);
+  opacity: 0.14;
+  pointer-events: none;
+  -webkit-mask: url("nyc-skyline.svg") no-repeat bottom center / 100% auto;
+  mask: url("nyc-skyline.svg") no-repeat bottom center / 100% auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body.home::before { opacity: 0.20; }
+}
+:root[data-theme="dark"] body.home::before { opacity: 0.20; }
+
 header {
   margin-bottom: 1.6rem;
 }
