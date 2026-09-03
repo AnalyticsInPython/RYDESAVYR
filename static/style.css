@@ -69,6 +69,14 @@
   box-sizing: border-box;
 }
 
+/* Google Maps' JS API injects its own controls (zoom, Map/Satellite
+   toggle, fullscreen, pegman) directly into #map and sizes them assuming
+   the default content-box model -- the border-box reset above squashes
+   and overlaps them, so opt #map's subtree back out of it. */
+#map * {
+  box-sizing: content-box;
+}
+
 body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   max-width: 900px;
