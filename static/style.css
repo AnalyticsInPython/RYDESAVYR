@@ -403,11 +403,51 @@ tbody tr:last-child td {
   cursor: pointer;
 }
 
+.spotlight-hero {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.10), rgba(6, 182, 212, 0.06));
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 1.8rem 1.7rem;
+  margin: 1.5rem 0 1rem;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.spotlight-hero:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+.spotlight-hero.selected-route {
+  box-shadow: var(--shadow-glow);
+}
+
+.spotlight-hero .spotlight-eyebrow {
+  font-size: 0.78rem;
+}
+
+.spotlight-hero .spotlight-mode {
+  font-size: 1.55rem;
+  margin: 0.5rem 0 1.1rem;
+}
+
+.spotlight-hero .mode-icon {
+  font-size: 1.3rem;
+}
+
+.spotlight-hero .spotlight-stats .stat {
+  font-size: 1rem;
+}
+
+.spotlight-hero .spotlight-stats .stat.highlight {
+  font-size: 1.3rem;
+}
+
 .spotlight-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 1rem;
-  margin: 1.5rem 0 2rem;
+  margin: 0 0 2rem;
 }
 
 .spotlight-card {
@@ -428,11 +468,6 @@ tbody tr:last-child td {
 .spotlight-card.selected-route {
   border-color: var(--accent);
   box-shadow: var(--shadow-glow);
-}
-
-.spotlight-card.value-pick {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.10), rgba(6, 182, 212, 0.06));
-  border-color: var(--accent);
 }
 
 .spotlight-eyebrow {

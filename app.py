@@ -117,7 +117,13 @@ def _spotlights(results):
         card["highlights"].extend(highlights)
         if mode["key"] not in order:
             order.append(mode["key"])
-    return [by_mode_key[key] for key in order]
+
+    cards = [by_mode_key[key] for key in order]
+    # Best value leads the lineup regardless of which mode it landed on --
+    # it's the one card meant to answer "which should I actually pick?", so
+    # it gets top billing over Cheapest/Fastest/Most eco-friendly.
+    cards.sort(key=lambda card: "Best value" not in card["titles"])
+    return cards
 
 
 def _render_form(origin_address="", destination_address=""):

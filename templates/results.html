@@ -17,6 +17,17 @@
     {{ total }} min
   {%- endif -%}
 {%- endmacro -%}
+{%- macro spotlight_body(s, mode_icons) -%}
+  <p class="spotlight-eyebrow">{{ s.titles|join(' · ') }}</p>
+  <h3 class="spotlight-mode">
+    <span class="mode-icon" aria-hidden="true">{{ mode_icons.get(s.mode.key, "•") }}</span>{{ s.mode.label }}
+  </h3>
+  <div class="spotlight-stats">
+    <span class="stat {{ 'highlight' if 'price' in s.highlights }}">${{ "%.2f"|format(s.mode.price) }}</span>
+    <span class="stat {{ 'highlight' if 'time' in s.highlights }}">{{ format_time(s.mode.time) }}</span>
+    <span class="stat {{ 'highlight' if 'carbon' in s.highlights }}">{{ s.mode.carbon }}g CO₂</span>
+  </div>
+{%- endmacro -%}
 <body>
   <header>
     <h1>RYDESAVYR</h1>
@@ -44,22 +55,24 @@
       <strong>{{ destination_address }}</strong>
     </p>
 
-    <div class="spotlight-grid">
-      {% for s in spotlights %}
-        <div class="spotlight-card {{ 'value-pick' if 'Best value' in s.titles else '' }} route-target"
-             data-key="{{ s.mode.key }}">
-          <p class="spotlight-eyebrow">{{ s.titles|join(' · ') }}</p>
-          <h3 class="spotlight-mode">
-            <span class="mode-icon" aria-hidden="true">{{ mode_icons.get(s.mode.key, "•") }}</span>{{ s.mode.label }}
-          </h3>
-          <div class="spotlight-stats">
-            <span class="stat {{ 'highlight' if 'price' in s.highlights }}">${{ "%.2f"|format(s.mode.price) }}</span>
-            <span class="stat {{ 'highlight' if 'time' in s.highlights }}">{{ format_time(s.mode.time) }}</span>
-            <span class="stat {{ 'highlight' if 'carbon' in s.highlights }}">{{ s.mode.carbon }}g CO₂</span>
-          </div>
-        </div>
-      {% endfor %}
+    {# app.py always puts the Best value card first -- it leads on its own,
+       emphasized, with the rest of the spotlights below it. #}
+    {% set hero = spotlights[0] %}
+    {% set rest = spotlights[1:] %}
+
+    <div class="spotlight-hero route-target" data-key="{{ hero.mode.key }}">
+      {{ spotlight_body(hero, mode_icons) }}
     </div>
+
+    {% if rest %}
+      <div class="spotlight-grid">
+        {% for s in rest %}
+          <div class="spotlight-card route-target" data-key="{{ s.mode.key }}">
+            {{ spotlight_body(s, mode_icons) }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
 
     {% if origin and destination and google_maps_api_key %}
       <div id="map"></div>
