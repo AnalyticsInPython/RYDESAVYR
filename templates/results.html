@@ -35,8 +35,8 @@
     </p>
     <p class="ranked-by">
       Ranked by:
-      {% for f in factors if tiers[f] != 'none' -%}
-        {{ "" if loop.first else ", " }}{{ factor_labels[f] }}{{ " (critical)" if tiers[f] == 'critical' }}
+      {% for f in factors if tiers[f] > 0 -%}
+        {{ "" if loop.first else ", " }}{{ factor_labels[f] }}{{ " (critical)" if tiers[f] >= 2 }}
       {%- else -%}
         nothing in particular
       {%- endfor %}

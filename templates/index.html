@@ -56,14 +56,14 @@
       <legend>What matters to you?</legend>
       {% for factor in factors %}
         <label for="weight_{{ factor }}">{{ factor_labels[factor] }}</label>
-        <input type="range" min="0" max="{{ tier_order|length - 1 }}" step="1"
+        <input type="range" min="0" max="{{ tier_order|length - 1 }}" step="any"
                id="weight_{{ factor }}" name="weight_{{ factor }}"
                list="tier-ticks"
-               value="{{ tier_order.index(tiers[factor]) }}"
+               value="{{ tiers[factor] }}"
                oninput="updateTierScale('{{ factor }}', this.value)">
         <div class="tier-scale" id="scale_{{ factor }}">
           {% for tier in tier_order %}
-            <span class="tier-scale-item {{ 'active' if tiers[factor] == tier else '' }}">{{ tier_labels[tier] }}</span>
+            <span class="tier-scale-item {{ 'active' if loop.index0 == tiers[factor]|round|int else '' }}">{{ tier_labels[tier] }}</span>
           {% endfor %}
         </div>
       {% endfor %}
@@ -85,9 +85,13 @@
 
   <script>
     function updateTierScale(factor, value) {
+      // The slider itself is continuous (see scoring.py's
+      // _weight_for_position/_criticality) -- this highlight just shows
+      // which named tier it's currently closest to.
+      const nearest = Math.round(Number(value));
       const items = document.querySelectorAll('#scale_' + factor + ' .tier-scale-item');
       items.forEach(function (item, i) {
-        item.classList.toggle('active', i === Number(value));
+        item.classList.toggle('active', i === nearest);
       });
     }
 

@@ -17,7 +17,7 @@ from mta_bus import get_bus_option
 from mta_subway import get_subway_option
 from routing import get_driving_route
 from scoring import (
-    DEFAULT_TIER,
+    DEFAULT_WEIGHT_POSITION,
     FACTOR_LABELS,
     FACTORS,
     TIER_LABELS,
@@ -106,7 +106,7 @@ def geocode_search():
 
 @app.route("/", methods=["GET"])
 def index():
-    tiers = {factor: DEFAULT_TIER for factor in FACTORS}
+    tiers = {factor: DEFAULT_WEIGHT_POSITION for factor in FACTORS}
     return _render_form(tiers)
 
 
@@ -125,10 +125,15 @@ def results():
     destination_lng = request.form.get("destination_lng", "").strip()
 
     def tier_for(factor):
+        # Sliders report a continuous position (see templates/index.html),
+        # not necessarily one of the three named tiers -- see scoring.py's
+        # _weight_for_position/_criticality for how that's used.
         raw = request.form.get(f"weight_{factor}", "")
-        if raw.isdigit() and 0 <= int(raw) < len(TIER_ORDER):
-            return TIER_ORDER[int(raw)]
-        return DEFAULT_TIER
+        try:
+            position = float(raw)
+        except ValueError:
+            return DEFAULT_WEIGHT_POSITION
+        return max(0.0, min(float(len(TIER_ORDER) - 1), position))
 
     tiers = {factor: tier_for(factor) for factor in FACTORS}
 
