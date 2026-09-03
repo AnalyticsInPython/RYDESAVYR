@@ -46,12 +46,12 @@
       <div id="map"></div>
       <p id="map-status" class="hint"></p>
       <div class="map-legend">
-        <span><i class="legend-swatch driving"></i> Uber / Lyft / Taxi / Shuttle — live driving route</span>
-        <span><i class="legend-swatch cycling"></i> Citibike — live cycling route</span>
-        <span><i class="legend-swatch walking"></i> Walking — live walking route</span>
-        <span><i class="legend-swatch transit"></i> Subway / Bus / Train — live transit route</span>
+        <span class="legend-item" data-profile="driving"><i class="legend-swatch driving"></i> Uber / Lyft / Taxi / Shuttle — live driving route</span>
+        <span class="legend-item" data-profile="cycling"><i class="legend-swatch cycling"></i> Citibike — live cycling route</span>
+        <span class="legend-item" data-profile="walking"><i class="legend-swatch walking"></i> Walking — live walking route</span>
+        <span class="legend-item" data-profile="transit"><i class="legend-swatch transit"></i> Subway / Bus / Train — live transit route</span>
       </div>
-      <p class="hint">Click a row below to show that option's route on the map.</p>
+      <p class="hint">Click a row below, or a legend item above, to show that option's route on the map.</p>
     {% endif %}
 
     <table>
@@ -185,6 +185,9 @@
           document.querySelectorAll('.route-row').forEach(function (row) {
             row.classList.toggle('selected-route', row.dataset.key === key);
           });
+          document.querySelectorAll('.legend-item').forEach(function (item) {
+            item.classList.toggle('active', item.dataset.profile === mode.route_profile);
+          });
 
           var meta = RYDESAVYR_TRAVEL_MODE_META[mode.route_profile];
           var requestId = ++activeRequestId;
@@ -218,6 +221,19 @@
 
         document.querySelectorAll('.route-row').forEach(function (row) {
           row.addEventListener('click', function () { selectRoute(row.dataset.key); });
+        });
+
+        // Each legend item represents a whole routing profile shared by
+        // several modes (e.g. "driving" covers Uber/Lyft/Taxi/Shuttle), so
+        // clicking one just jumps to the first currently-listed result that
+        // uses that profile.
+        document.querySelectorAll('.legend-item').forEach(function (item) {
+          var firstMatch = results.find(function (r) { return r.route_profile === item.dataset.profile; });
+          if (!firstMatch) {
+            item.classList.add('unavailable');
+            return;
+          }
+          item.addEventListener('click', function () { selectRoute(firstMatch.key); });
         });
 
         selectRoute(results[0].key);

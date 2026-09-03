@@ -387,6 +387,27 @@ tr.top-pick {
   border: 1px solid var(--border);
 }
 
+.legend-item {
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.legend-item:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.legend-item.active {
+  border-color: var(--accent);
+  background: var(--accent-gradient);
+  color: white;
+}
+
+.legend-item.unavailable {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .legend-swatch {
   display: inline-block;
   width: 0.55rem;
