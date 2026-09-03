@@ -19,9 +19,7 @@ from mta_subway import get_subway_option
 from routing import get_driving_route
 from scoring import (
     DEFAULT_WEIGHT_POSITION,
-    FACTOR_LABELS,
     FACTORS,
-    TIER_LABELS,
     rank_modes,
 )
 
@@ -79,6 +77,32 @@ def _compute_results(origin, destination, tiers):
     return rank_modes(estimates, tiers)
 
 
+def _spotlights(results):
+    """The handful of options worth putting in front of the user, each
+    paired with the stat that earns it a spot -- rather than making them
+    scan every mode to find these themselves.
+
+    When the same mode wins more than one category (e.g. Citibike is both
+    the cheapest and the greenest), it gets a single card carrying every
+    badge it earned instead of one repeated card per category.
+    """
+    candidates = [
+        ("Top pick", "score", results[0]),
+        ("Fastest", "time", min(results, key=lambda r: r["time"])),
+        ("Cheapest", "price", min(results, key=lambda r: r["price"])),
+        ("Most eco-friendly", "carbon", min(results, key=lambda r: r["carbon"])),
+    ]
+    by_mode_key = {}
+    order = []
+    for title, highlight, mode in candidates:
+        card = by_mode_key.setdefault(mode["key"], {"titles": [], "highlights": [], "mode": mode})
+        card["titles"].append(title)
+        card["highlights"].append(highlight)
+        if mode["key"] not in order:
+            order.append(mode["key"])
+    return [by_mode_key[key] for key in order]
+
+
 def _render_form(origin_address="", destination_address=""):
     return render_template(
         "index.html",
@@ -87,14 +111,11 @@ def _render_form(origin_address="", destination_address=""):
     )
 
 
-def _render_results(tiers, results, origin_address, destination_address,
+def _render_results(results, origin_address, destination_address,
                     origin=None, destination=None):
     return render_template(
         "results.html",
-        tiers=tiers,
-        tier_labels=TIER_LABELS,
-        factors=FACTORS,
-        factor_labels=FACTOR_LABELS,
+        spotlights=_spotlights(results),
         results=results,
         origin_address=origin_address,
         destination_address=destination_address,
@@ -155,7 +176,7 @@ def results():
         return _render_form(origin_address, destination_address)
 
     return _render_results(
-        tiers, computed, origin_address, destination_address, origin, destination
+        computed, origin_address, destination_address, origin, destination
     )
 
 

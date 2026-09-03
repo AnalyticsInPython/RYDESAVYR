@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RYDESAVYR — Ranked options</title>
+  <title>RYDESAVYR — Your options</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -12,7 +12,6 @@
 <body>
   <header>
     <h1>RYDESAVYR</h1>
-    <p>The best way home, ranked for what matters to you right now.</p>
   </header>
 
   {% with messages = get_flashed_messages() %}
@@ -26,79 +25,61 @@
   <p><a href="{{ url_for('index') }}" class="back-link">← Plan another trip</a></p>
 
   <section class="results">
-    <h2>Ranked options</h2>
-
     <p class="trip-summary">
       <strong>{{ origin_address or "Your location" }}</strong>
       <span aria-hidden="true">→</span>
       <strong>{{ destination_address }}</strong>
     </p>
-    <p class="ranked-by">
-      Ranked by:
-      {% for f in factors if tiers[f] > 0 -%}
-        {{ "" if loop.first else ", " }}{{ factor_labels[f] }}{{ " (critical)" if tiers[f] >= 2 }}
-      {%- else -%}
-        nothing in particular
-      {%- endfor %}
-    </p>
+
+    <div class="spotlight-grid">
+      {% for s in spotlights %}
+        <div class="spotlight-card {{ 'top-pick' if 'Top pick' in s.titles else '' }} route-target"
+             data-key="{{ s.mode.key }}">
+          <p class="spotlight-eyebrow">{{ s.titles|join(' · ') }}</p>
+          <h3 class="spotlight-mode">{{ s.mode.label }}</h3>
+          <div class="spotlight-stats">
+            <span class="stat {{ 'highlight' if 'price' in s.highlights }}">${{ "%.2f"|format(s.mode.price) }}</span>
+            <span class="stat {{ 'highlight' if 'time' in s.highlights }}">{{ s.mode.time }} min</span>
+            <span class="stat {{ 'highlight' if 'carbon' in s.highlights }}">{{ s.mode.carbon }}g CO₂</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
 
     {% if origin and destination and google_maps_api_key %}
       <div id="map"></div>
       <p id="map-status" class="hint"></p>
-      <div class="map-legend">
-        <span class="legend-item" data-profile="driving"><i class="legend-swatch driving"></i> Uber / Lyft / Taxi / Shuttle — live driving route</span>
-        <span class="legend-item" data-profile="cycling"><i class="legend-swatch cycling"></i> Citibike — live cycling route</span>
-        <span class="legend-item" data-profile="walking"><i class="legend-swatch walking"></i> Walking — live walking route</span>
-        <span class="legend-item" data-profile="transit"><i class="legend-swatch transit"></i> Subway / Bus / Train — live transit route</span>
-      </div>
-      <p class="hint">Click a row below, or a legend item above, to show that option's route on the map.</p>
     {% endif %}
 
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Option</th>
-          <th>Score</th>
-          <th>Price</th>
-          <th>Time</th>
-          <th>Distance</th>
-          <th>Energy</th>
-          <th>Scenery</th>
-          <th>Carbon</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in results %}
-          <tr class="{{ 'top-pick' if loop.first else '' }} route-row" data-key="{{ r.key }}">
-            <td>{{ loop.index }}</td>
-            <td>
-              {{ r.label }}
-              {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
-            </td>
-            <td>{{ r.score }}</td>
-            <td>${{ "%.2f"|format(r.price) }}</td>
-            <td>{{ r.time }} min</td>
-            <td>{{ r.distance }} mi</td>
-            <td>{{ r.energy }}/10</td>
-            <td>{{ r.nature_vibez }}/10</td>
-            <td>{{ r.carbon }} g CO₂</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    <p><a href="{{ url_for('index') }}" class="back-link">← Plan another trip</a></p>
+    {% if results|length > spotlights|length %}
+      <details class="all-options">
+        <summary>See all {{ results|length }} options</summary>
+        <table>
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>Price</th>
+              <th>Time</th>
+              <th>Carbon</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in results %}
+              <tr class="route-target" data-key="{{ r.key }}">
+                <td>
+                  {{ r.label }}
+                  {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
+                </td>
+                <td>${{ "%.2f"|format(r.price) }}</td>
+                <td>{{ r.time }} min</td>
+                <td>{{ r.carbon }}g CO₂</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    {% endif %}
   </section>
-
-  <footer>
-    <p>
-      Citibike, Subway, and Bus use live data. Uber and Lyft prices are fit from real
-      NYC TLC trip history; every other option (including Taxi) is a rate-card formula,
-      not a live quote. The map above draws each option's real route from the Google
-      Maps Routes API. See the project README for details.
-    </p>
-  </footer>
 
   {% if results and origin and destination and google_maps_api_key %}
     <script>
@@ -182,11 +163,8 @@
           var mode = results.find(function (r) { return r.key === key; });
           if (!mode) return;
 
-          document.querySelectorAll('.route-row').forEach(function (row) {
-            row.classList.toggle('selected-route', row.dataset.key === key);
-          });
-          document.querySelectorAll('.legend-item').forEach(function (item) {
-            item.classList.toggle('active', item.dataset.profile === mode.route_profile);
+          document.querySelectorAll('.route-target').forEach(function (el) {
+            el.classList.toggle('selected-route', el.dataset.key === key);
           });
 
           var meta = RYDESAVYR_TRAVEL_MODE_META[mode.route_profile];
@@ -219,21 +197,8 @@
           });
         }
 
-        document.querySelectorAll('.route-row').forEach(function (row) {
-          row.addEventListener('click', function () { selectRoute(row.dataset.key); });
-        });
-
-        // Each legend item represents a whole routing profile shared by
-        // several modes (e.g. "driving" covers Uber/Lyft/Taxi/Shuttle), so
-        // clicking one just jumps to the first currently-listed result that
-        // uses that profile.
-        document.querySelectorAll('.legend-item').forEach(function (item) {
-          var firstMatch = results.find(function (r) { return r.route_profile === item.dataset.profile; });
-          if (!firstMatch) {
-            item.classList.add('unavailable');
-            return;
-          }
-          item.addEventListener('click', function () { selectRoute(firstMatch.key); });
+        document.querySelectorAll('.route-target').forEach(function (el) {
+          el.addEventListener('click', function () { selectRoute(el.dataset.key); });
         });
 
         selectRoute(results[0].key);
