@@ -49,11 +49,17 @@
     "subway": "🚇", "bus": "🚌", "train": "🚆",
   } %}
   <section class="results">
-    <p class="trip-summary">
-      <strong>{{ origin_address or "Your location" }}</strong>
-      <span aria-hidden="true">→</span>
-      <strong>{{ destination_address }}</strong>
-    </p>
+    <div class="trip-summary">
+      <div class="trip-point">
+        <span class="trip-label">From</span>
+        <strong>{{ origin_address or "Your location" }}</strong>
+      </div>
+      <span class="trip-arrow" aria-hidden="true">→</span>
+      <div class="trip-point">
+        <span class="trip-label">To</span>
+        <strong>{{ destination_address }}</strong>
+      </div>
+    </div>
 
     {# app.py always puts the Best value card first -- it leads on its own,
        emphasized, with the rest of the spotlights below it. #}
@@ -82,18 +88,20 @@
     {% if results|length > spotlights|length %}
       <details class="all-options">
         <summary>See all {{ results|length }} options</summary>
-        <table>
+        <table class="sortable-table">
           <thead>
             <tr>
-              <th>Option</th>
-              <th>Price</th>
-              <th>Time</th>
-              <th>Carbon</th>
+              <th data-sort="label" data-type="text">Option</th>
+              <th data-sort="price" data-type="number">Price</th>
+              <th data-sort="time" data-type="number">Time</th>
+              <th data-sort="carbon" data-type="number">Carbon</th>
             </tr>
           </thead>
           <tbody>
             {% for r in results %}
-              <tr class="route-target" data-key="{{ r.key }}">
+              <tr class="route-target" data-key="{{ r.key }}"
+                  data-label="{{ r.label }}" data-price="{{ r.price }}"
+                  data-time="{{ r.time }}" data-carbon="{{ r.carbon }}">
                 <td>
                   <span class="mode-icon" aria-hidden="true">{{ mode_icons.get(r.key, "•") }}</span>{{ r.label }}
                   {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
@@ -108,6 +116,41 @@
       </details>
     {% endif %}
   </section>
+
+  <script>
+    (function () {
+      var table = document.querySelector('.sortable-table');
+      if (!table) return;
+      var tbody = table.querySelector('tbody');
+      var headers = table.querySelectorAll('th[data-sort]');
+      var sortedBy = null;
+      var sortDir = 1;
+
+      function compareRows(key, type, dir) {
+        return function (rowA, rowB) {
+          var a = rowA.dataset[key];
+          var b = rowB.dataset[key];
+          var diff = type === 'number' ? parseFloat(a) - parseFloat(b) : a.localeCompare(b);
+          return dir * diff;
+        };
+      }
+
+      headers.forEach(function (th) {
+        th.addEventListener('click', function () {
+          var key = th.dataset.sort;
+          sortDir = sortedBy === key ? -sortDir : 1;
+          sortedBy = key;
+
+          var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+          rows.sort(compareRows(key, th.dataset.type, sortDir));
+          rows.forEach(function (row) { tbody.appendChild(row); });
+
+          headers.forEach(function (h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
+          th.classList.add(sortDir === 1 ? 'sorted-asc' : 'sorted-desc');
+        });
+      });
+    })();
+  </script>
 
   {% if results and origin and destination and google_maps_api_key %}
     <script>

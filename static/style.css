@@ -356,6 +356,38 @@ thead th {
   background: var(--surface-alt);
 }
 
+th[data-sort] {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 1.5rem;
+  transition: color 0.15s ease;
+}
+
+th[data-sort]:hover {
+  color: var(--accent);
+}
+
+th[data-sort]::after {
+  content: '↕';
+  position: absolute;
+  right: 0.6rem;
+  opacity: 0.35;
+  font-size: 0.75rem;
+}
+
+th[data-sort].sorted-asc::after {
+  content: '↑';
+  opacity: 1;
+  color: var(--accent);
+}
+
+th[data-sort].sorted-desc::after {
+  content: '↓';
+  opacity: 1;
+  color: var(--accent);
+}
+
 tbody tr:last-child td {
   border-bottom: none;
 }
@@ -385,9 +417,57 @@ tbody tr:last-child td {
 }
 
 .trip-summary {
-  margin: 0.4rem 0 0.2rem;
-  font-size: 1.05rem;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 1.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.trip-point {
+  flex: 1;
+  min-width: 0;
+}
+
+.trip-point strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+.trip-label {
+  display: block;
+  font-family: "Sora", "Inter", sans-serif;
+  font-weight: 700;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.trip-arrow {
+  flex-shrink: 0;
+  color: var(--accent);
+  font-size: 1.3rem;
+}
+
+@media (max-width: 520px) {
+  .trip-summary {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .trip-arrow {
+    align-self: center;
+    transform: rotate(90deg);
+  }
 }
 
 #map {
