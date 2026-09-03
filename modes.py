@@ -145,7 +145,7 @@ MODES = [
         # hour surcharge (4-8pm weekdays), NY State Congestion Surcharge ($2.50 for any trip
         # touching Manhattan), tolls, and tip. Real fares can run $1-$6+ above this estimate
         # depending on when/where you're riding -- see the notes string below.
-        "taxi", "Taxi (Curb / yellow cab)", avg_speed_mph=15, route_factor=1.3, base_fare=4.50,
+        "taxi", "Taxi", avg_speed_mph=15, route_factor=1.3, base_fare=4.50,
         cost_per_mile=3.50, cost_per_minute=0, wait_minutes=5,
         energy_cost=1, nature_vibez=2, carbon_g_per_mile=404,
         notes="Approximated from the NYC TLC rate card (base fare + mandatory surcharges); "
