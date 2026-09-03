@@ -304,6 +304,12 @@ tbody tr:last-child td {
   color: var(--text-muted);
 }
 
+.mode-icon {
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-size: 1.05rem;
+}
+
 .back-link {
   display: inline-block;
   color: var(--accent);

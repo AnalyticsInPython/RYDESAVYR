@@ -24,6 +24,11 @@
 
   <p><a href="{{ url_for('index') }}" class="back-link">← Plan another trip</a></p>
 
+  {% set mode_icons = {
+    "uber": "🚗", "lyft": "🚗", "taxi": "🚗", "shuttle": "🚗",
+    "citibike": "🚲", "walk": "🚶",
+    "subway": "🚇", "bus": "🚌", "train": "🚆",
+  } %}
   <section class="results">
     <p class="trip-summary">
       <strong>{{ origin_address or "Your location" }}</strong>
@@ -36,7 +41,9 @@
         <div class="spotlight-card {{ 'top-pick' if 'Top pick' in s.titles else '' }} route-target"
              data-key="{{ s.mode.key }}">
           <p class="spotlight-eyebrow">{{ s.titles|join(' · ') }}</p>
-          <h3 class="spotlight-mode">{{ s.mode.label }}</h3>
+          <h3 class="spotlight-mode">
+            <span class="mode-icon" aria-hidden="true">{{ mode_icons.get(s.mode.key, "•") }}</span>{{ s.mode.label }}
+          </h3>
           <div class="spotlight-stats">
             <span class="stat {{ 'highlight' if 'price' in s.highlights }}">${{ "%.2f"|format(s.mode.price) }}</span>
             <span class="stat {{ 'highlight' if 'time' in s.highlights }}">{{ s.mode.time }} min</span>
@@ -67,7 +74,7 @@
             {% for r in results %}
               <tr class="route-target" data-key="{{ r.key }}">
                 <td>
-                  {{ r.label }}
+                  <span class="mode-icon" aria-hidden="true">{{ mode_icons.get(r.key, "•") }}</span>{{ r.label }}
                   {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
                 </td>
                 <td>${{ "%.2f"|format(r.price) }}</td>
