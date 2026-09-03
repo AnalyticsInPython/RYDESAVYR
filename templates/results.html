@@ -9,6 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+{%- macro format_time(minutes) -%}
+  {%- set total = minutes|round|int -%}
+  {%- if total >= 60 -%}
+    {{ total // 60 }} h {{ total % 60 }} min
+  {%- else -%}
+    {{ total }} min
+  {%- endif -%}
+{%- endmacro -%}
 <body>
   <header>
     <h1>RYDESAVYR</h1>
@@ -46,7 +54,7 @@
           </h3>
           <div class="spotlight-stats">
             <span class="stat {{ 'highlight' if 'price' in s.highlights }}">${{ "%.2f"|format(s.mode.price) }}</span>
-            <span class="stat {{ 'highlight' if 'time' in s.highlights }}">{{ s.mode.time }} min</span>
+            <span class="stat {{ 'highlight' if 'time' in s.highlights }}">{{ format_time(s.mode.time) }}</span>
             <span class="stat {{ 'highlight' if 'carbon' in s.highlights }}">{{ s.mode.carbon }}g CO₂</span>
           </div>
         </div>
@@ -78,7 +86,7 @@
                   {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
                 </td>
                 <td>${{ "%.2f"|format(r.price) }}</td>
-                <td>{{ r.time }} min</td>
+                <td>{{ format_time(r.time) }}</td>
                 <td>{{ r.carbon }}g CO₂</td>
               </tr>
             {% endfor %}
