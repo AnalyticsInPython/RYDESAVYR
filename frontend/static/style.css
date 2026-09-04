@@ -622,6 +622,43 @@ tbody tr:last-child td {
   font-size: 0.95rem;
 }
 
+/* Step-by-step legs (walk to the stop, ride, walk to the destination) for
+   subway / bus / Citibike spotlight cards. */
+.trip-legs {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0.9rem 0 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.trip-legs .leg {
+  display: flex;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.trip-legs .leg-icon {
+  flex: none;
+  width: 1.3rem;
+  text-align: center;
+}
+
+.trip-legs .leg-text {
+  color: var(--text);
+}
+
+.trip-legs .leg-meta {
+  color: var(--text-muted);
+}
+
+.spotlight-hero .trip-legs .leg {
+  font-size: 0.92rem;
+}
+
 .all-options {
   margin-top: 0.5rem;
 }

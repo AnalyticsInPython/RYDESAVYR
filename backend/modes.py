@@ -110,14 +110,22 @@ MODES = [
     Mode(
         "subway", "Subway", avg_speed_mph=17, route_factor=1.4, base_fare=2.90,
         cost_per_mile=0, cost_per_minute=0, wait_minutes=6,
+        # ~90 g per passenger-mile: a subway train's emissions divided
+        # across an average passenger load, i.e. the CO2 attributable to
+        # one more rider, not the whole train.
         energy_cost=3, nature_vibez=3, carbon_g_per_mile=90,
-        notes="Flat MTA fare; wait time approximates average headway.",
+        notes="Flat MTA fare; wait time approximates average headway. "
+              "CO₂ is an estimated average per rider (~90 g/mi).",
     ),
     Mode(
         "bus", "Bus", avg_speed_mph=8, route_factor=1.3, base_fare=2.90,
         cost_per_mile=0, cost_per_minute=0, wait_minutes=8,
+        # ~150 g per passenger-mile: a bus's emissions divided across an
+        # average passenger load, i.e. the CO2 attributable to one more
+        # rider, not the whole vehicle.
         energy_cost=3, nature_vibez=3, carbon_g_per_mile=150,
-        notes="Flat MTA fare; slower average speed due to street traffic.",
+        notes="Flat MTA fare; slower average speed due to street traffic. "
+              "CO₂ is an estimated average per rider (~150 g/mi).",
     ),
     Mode(
         "train", "Commuter Train (LIRR / Metro-North)", avg_speed_mph=40, route_factor=1.1,

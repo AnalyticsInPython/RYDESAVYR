@@ -281,10 +281,35 @@ def get_subway_option(origin, destination):
     )
     if details["direction_was_fallback"]:
         notes += " (Opposite-direction train shown — none scheduled the other way right now.)"
+    notes += " CO₂ is an estimated average per rider (~90 g/mi)."
+
+    to_mi, to_min = estimate_walk_distance_and_time(details["walk_to_station_miles"])
+    from_mi, from_min = estimate_walk_distance_and_time(details["walk_from_station_miles"])
+    legs = [
+        {
+            "kind": "walk",
+            "text": f"Walk to {details['origin_station']['name']}",
+            "miles": round(to_mi, 2),
+            "minutes": round(to_min),
+        },
+        {
+            "kind": "subway",
+            "text": f"Ride to {details['destination_station']['name']}",
+            "minutes": round(details["ride_minutes"]),
+            "detail": f"next train in {details['wait_minutes']} min",
+        },
+        {
+            "kind": "walk",
+            "text": "Walk to your destination",
+            "miles": round(from_mi, 2),
+            "minutes": round(from_min),
+        },
+    ]
 
     return {
         "key": "subway",
         "label": "Subway",
+        "legs": legs,
         "distance": round(details["distance_miles"] + details["walk_distance_miles"], 2),
         "time": round(
             details["walk_minutes"] + details["wait_minutes"] + details["ride_minutes"], 1
@@ -293,6 +318,8 @@ def get_subway_option(origin, destination):
         "energy": 3,
         "nature_vibez": 3,
         # Carbon is from the train ride only — the walking legs add none.
+        # ~90 g per passenger-mile: the train's emissions divided across an
+        # average passenger load, reported per rider on the results page.
         "carbon": round(90 * details["distance_miles"]),
         "notes": notes,
         "route_profile": "transit",

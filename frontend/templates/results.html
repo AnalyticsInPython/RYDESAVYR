@@ -31,6 +31,20 @@
     <span class="stat {{ 'highlight' if 'time' in s.highlights }}">{{ format_time(s.mode.time) }}</span>
     <span class="stat {{ 'highlight' if 'carbon' in s.highlights }}">{{ s.mode.carbon }}g CO₂</span>
   </div>
+  {%- if s.mode.legs %}
+    <ol class="trip-legs">
+      {%- for leg in s.mode.legs %}
+        <li class="leg">
+          <span class="leg-icon" aria-hidden="true">{{ mode_icons.get(leg.kind, "🚶") }}</span>
+          <span class="leg-text">{{ leg.text }}<span class="leg-meta">
+            {%- if leg.miles is defined %} · {{ leg.miles }} mi{% endif %}
+            {%- if leg.minutes is defined %} · ~{{ leg.minutes }} min{% endif %}
+            {%- if leg.detail %} · {{ leg.detail }}{% endif -%}
+          </span></span>
+        </li>
+      {%- endfor %}
+    </ol>
+  {%- endif %}
 {%- endmacro -%}
 <body>
   <header>

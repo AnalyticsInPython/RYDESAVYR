@@ -9,21 +9,30 @@ GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 from geopy.distance import geodesic
 
-from citibike import get_citibike_option
-from columbia_shuttle import get_shuttle_option
-from commuter_rail import is_trip_feasible as is_train_trip_feasible
-from geocode import geocode_address, search_addresses
-from modes import MODES
-from mta_bus import get_bus_option
-from mta_subway import get_subway_option
-from routing import get_driving_route
-from scoring import (
+from backend.modes import MODES
+from backend.scoring import (
     DEFAULT_WEIGHT_POSITION,
     FACTORS,
     rank_modes,
 )
+from data.citibike import get_citibike_option
+from data.columbia_shuttle import get_shuttle_option
+from data.commuter_rail import is_trip_feasible as is_train_trip_feasible
+from data.geocode import geocode_address, search_addresses
+from data.mta_bus import get_bus_option
+from data.mta_subway import get_subway_option
+from data.routing import get_driving_route
 
-app = Flask(__name__)
+# Run from the repo root (`python -m backend.app`) so this package-relative
+# path to the front end's templates/static assets resolves regardless of
+# the current working directory.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(_REPO_ROOT, "frontend", "templates"),
+    static_folder=os.path.join(_REPO_ROOT, "frontend", "static"),
+)
 app.secret_key = "rydesavyr-dev"
 
 
